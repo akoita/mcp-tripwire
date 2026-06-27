@@ -99,8 +99,7 @@ _RULES: list[tuple[str, re.Pattern, str, Severity, str]] = [
     (
         "EXF-SECRET",
         re.compile(
-            r"(exfiltrat|leak|send|upload|post)\b.{0,40}\b"
-            r"(secret|token|key|credential|canary)",
+            r"(exfiltrat|leak|send|upload|post)\b.{0,40}\b" r"(secret|token|key|credential|canary)",
             re.I,
         ),
         "Describes exfiltrating secrets/credentials",
