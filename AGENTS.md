@@ -25,7 +25,7 @@ Product spec → [SPEC.md](SPEC.md). Plan → [ROADMAP.md](ROADMAP.md). Methodol
 4. **Demos use a clearly-labelled CANARY secret + local fake sink.** Never touch real `~/.ssh`, env, or credentials. Say "canary secret" out loud.
 5. **Tests/evals are the contract — write them before the code.** Both layers required: deterministic `pytest` + non-deterministic evals. → [ADR-0005](docs/adr/ADR-0005-two-layer-verification.md)
 6. **Never report invented metrics.** `tripwire ci` reports real `N/M attacks blocked` from the actual corpus.
-7. **Never commit to `main`.** Branch `feat/<id>-<kebab>`; commits `feat(#id): …`; AI commits carry a `Co-Authored-By` trailer.
+7. **Never commit to `main`.** Branch `feat/<id>-<kebab>` (or `chore/`, `docs/`, `fix/`); commits `<type>(#id): …`; AI commits carry a `Co-Authored-By` trailer. Enforced locally by the `no-commit-to-main` pre-commit hook (private repos can't use GitHub branch protection without Pro).
 8. **`make check` must be green before any PR.** Single pre-PR gate = lint + test + guardrails.
 9. **Partial work self-flags.** Mark stubs with `# STUB(Exx):` and `"stub": True` so nothing ships silently incomplete.
 
