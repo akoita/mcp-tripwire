@@ -19,4 +19,7 @@ _Working memory. Update at the end of each session._
 ## Open
 - Signing scheme: HMAC now → Ed25519 (P1).
 - Deploy: confirm GCP project/billing or fall back to documented local run.
-- GitHub repo name/visibility before publishing.
+- GitHub Actions billing blocked on private repo — CI workflows present but dormant; local `make check` + pre-commit are the active quality gate.
+
+## Resolved
+- GitHub repo: published private at `akoita/mcp-tripwire` (2026-06-27).
