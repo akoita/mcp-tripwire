@@ -37,8 +37,7 @@ scan → approve / reject → fingerprint → monitor drift → quarantine rug-p
 
 Implementation status:
 
-- Implemented: deterministic scanning, OWASP mapping, fingerprinting, approval, drift quarantine, signed badge verification, CLI eval, proof demo, guardrail checks.
-- Partially implemented: proxy guard logic for `tools/list` and `tools/call`; the byte-level transparent stdio bridge is the next E2 task.
+- Implemented: deterministic scanning, OWASP mapping, fingerprinting, approval, drift quarantine, signed badge verification, CLI eval, proof demo, guardrail checks, **transparent stdio MCP proxy** (`tools/list` rewrite + `tools/call` short-circuit, with structured stderr logging — see [RFC-0001](docs/rfc/RFC-0001-e2-stdio-proxy-bridge.md)).
 - Planned: ADK multi-agent orchestration and full Cloud Run gateway wiring.
 
 ## Quickstart
@@ -59,7 +58,7 @@ make eval                  # run the attack corpus -> "N/M attacks blocked"
 ## Course concepts demonstrated
 | Concept | Where |
 |---|---|
-| **MCP server / gateway** | `src/tripwire/proxy.py` guard logic implemented; transparent stdio bridge is E2 |
+| **MCP server / gateway** | `src/tripwire/proxy.py` — transparent stdio bridge (E2) with `tools/list` filter + `tools/call` drift short-circuit |
 | **Security features** | the entire product — `detection.py`, `engine.py`, `attestation.py`, `scripts/harness_guardrails.py` |
 | **Agent skills / Agents CLI** | `tripwire` CLI, `.agents/skills/` |
 | **Deployability** | `Dockerfile`, `app/`, `agents-cli-manifest.yaml`; HTTP gateway wiring is P1 |
