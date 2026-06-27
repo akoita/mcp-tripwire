@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Secrets & local config (Hard Rule #3)
+.env
+*.key
+*.pem
+secrets/
+
+# Eval artifacts (regenerated; keep dirs via .gitkeep)
+artifacts/traces/*
+artifacts/grade_results/*
+!artifacts/.gitkeep
+
+# Course materials — never commit (large, not repo content)
+*.pdf
+
+# OS
+.DS_Store
+
+# Claude Code internals (worktrees, local session state)
+.claude/worktrees/
+.claude/settings.local.json

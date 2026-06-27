@@ -1,0 +1,13 @@
+# agents-cli source of truth (course Day-5 convention). Preserve; avoid hand-editing
+# the create_params after generation. MCP servers are long-lived → Cloud Run target.
+name: mcp-tripwire
+acli_version: "0.5.1"
+agent_directory: app
+region: us-east1
+base_template: adk
+language: python
+create_params:
+  deployment_target: cloud_run        # long-lived MCP gateway (not agent_runtime)
+  session_type: stateless
+  cicd_runner: github_actions
+  agent_guidance_filename: AGENTS.md   # single source of truth (symlinked to CLAUDE.md/GEMINI.md)

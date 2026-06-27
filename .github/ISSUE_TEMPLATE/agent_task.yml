@@ -1,0 +1,31 @@
+name: Agent task
+description: A well-scoped task an AI coding agent can pick up.
+title: "[task]: "
+labels: ["agent-task"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: One sentence — the outcome, not the implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria (test-first)
+      description: Given/When/Then or a checklist. These become the failing test.
+    validations:
+      required: true
+  - type: input
+    id: epic
+    attributes:
+      label: Epic / ROADMAP item
+      description: e.g. E2 proxy, E3 ADK agents
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Guardrails
+      options:
+        - label: Stays within AGENTS.md hard rules (core stays stdlib-only; no secrets; canary-only demos)
+        - label: Adds/updates tests or evals (the contract)

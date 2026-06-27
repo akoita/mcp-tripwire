@@ -1,0 +1,27 @@
+# Security gate (Day-4): security-lint + harness guardrails + dependency audit. Weekly cron.
+name: security
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"   # Mondays 06:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --extra dev
+      - name: Security lint (ruff flake8-bandit)
+        run: uv run ruff check --select S .
+      - name: Harness guardrails (no secrets / no rogue deps / no unflagged stubs)
+        run: uv run python scripts/harness_guardrails.py
+      - name: Dependency audit
+        run: uvx pip-audit || true   # non-blocking advisory
+      - name: Dogfood — Tripwire scans its own demo manifest
+        run: uv run python -m tripwire.cli ci

@@ -1,0 +1,52 @@
+# MCP-Tripwire — packaging & tooling.
+# Managed by `uv`. Deterministic core is stdlib-only; ADK is an optional extra.
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mcp-tripwire"
+version = "0.1.0"
+description = "A lightweight OSS trust gateway for MCP tools: continuous schema-integrity enforcement + portable signed attestations."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Aboubakar Koïta" }]
+keywords = ["mcp", "security", "agents", "attestation", "tool-poisoning", "supply-chain"]
+# Deterministic core has ZERO runtime dependencies (Hard Rule #2).
+dependencies = []
+
+[project.optional-dependencies]
+# Optional ADK multi-agent layer (P1). Kept out of the core so the spine stays dependency-free.
+agent = [
+  "fastapi>=0.111.0",
+  "google-adk>=0.5.0",
+  "mcp>=1.2.0",
+  "uvicorn[standard]>=0.30.0",
+]
+dev = ["ruff>=0.6.0", "pytest>=8.0.0"]
+
+[project.scripts]
+tripwire = "tripwire.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tripwire"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+# Includes flake8-bandit (S) — security linting per the course's Day-4 guidance.
+select = ["E", "F", "I", "B", "UP", "S"]
+ignore = ["S101"]  # asserts are fine in tests
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S"]
+"examples/**" = ["S"]  # the demo intentionally models insecure behaviour (canary only)
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit", "tests/integration"]
+addopts = "-q"
+pythonpath = ["src"]

@@ -1,0 +1,8 @@
+# Gemini CLI / Antigravity custom command. Adapts the shared Agent Skill (single source).
+description = "Scan an MCP server's tools for poisoning, drift, and OWASP MCP Top-10 issues."
+prompt = """
+Use the scanning-mcp-servers skill to scan the MCP server the user names.
+Follow its workflow exactly and map every finding to the OWASP MCP Top 10.
+
+@{.agents/skills/scanning_mcp_servers/SKILL.md}
+"""

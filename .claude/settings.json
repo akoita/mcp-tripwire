@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(make:*)",
+      "Bash(uv:*)",
+      "Bash(python3 -m pytest:*)",
+      "Bash(ruff:*)",
+      "Bash(python3 scripts/harness_guardrails.py:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf /*)",
+      "Read(./.env)",
+      "Read(./secrets/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "case \"$CLAUDE_TOOL_INPUT\" in *'git commit'*|*'git push'*) if git rev-parse --abbrev-ref HEAD 2>/dev/null | grep -qx main; then echo 'Hard Rule #7: never commit/push to main' >&2; exit 2; fi;; esac; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}

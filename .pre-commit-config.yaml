@@ -1,0 +1,25 @@
+# Pre-commit = the local edge of the same gate CI runs. Mirrors resonate-agentic.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: detect-private-key        # Hard Rule #3
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ["--maxkb=512"]         # blocks accidental PDF/binary commits
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+  - repo: local
+    hooks:
+      - id: harness-guardrails
+        name: harness guardrails (AGENTS.md hard rules)
+        entry: python3 scripts/harness_guardrails.py
+        language: system
+        pass_filenames: false
+        always_run: true

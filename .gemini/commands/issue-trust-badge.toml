@@ -1,0 +1,8 @@
+# Gemini CLI / Antigravity custom command. Adapts the shared Agent Skill (single source).
+description = "Issue a signed trust badge for a vetted MCP server (after a clean scan)."
+prompt = """
+Use the issuing-mcp-trust-badge skill. Only proceed if a scan has completed cleanly and a
+human has approved. Never sign blindly.
+
+@{.agents/skills/issuing_mcp_trust_badge/SKILL.md}
+"""

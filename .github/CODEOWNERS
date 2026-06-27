@@ -1,0 +1,7 @@
+# Default owner for everything.
+*       @akoita
+
+# The deterministic core and trust primitives need extra care.
+/src/tripwire/attestation.py   @akoita
+/src/tripwire/engine.py        @akoita
+/scripts/harness_guardrails.py @akoita
