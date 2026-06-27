@@ -74,9 +74,9 @@ def test_scan_poisoned_groups_by_owasp_category(tmp_path: Path):
     assert rc == 1
     # Output groups under an OWASP MCP heading with the human title.
     # We accept any of the relevant categories the detector might flag.
-    assert any(
-        f"MCP-0{n}" in out for n in (1, 2, 6)
-    ), f"expected an OWASP MCP category heading, got:\n{out}"
+    assert any(f"MCP-0{n}" in out for n in (1, 2, 6)), (
+        f"expected an OWASP MCP category heading, got:\n{out}"
+    )
     # The human-readable title should appear, not just the ID.
     assert any(
         title in out

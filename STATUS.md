@@ -2,7 +2,7 @@
 
 _Working memory. Update at the end of each session._
 
-**Now:** E2 stdio bridge landed (RFC-0001). 19 tests pass (1 new integration), 8/8 corpus attacks blocked, demo proof-moment runs.
+**Now:** Day 3 done — CLI polish (#6) + drift eval (#7) landed. 32 tests pass. `make eval` reports `9/9 attacks blocked · 0 false-positives on 4 clean tools` (the +1 is a rug-pull case caught by `evaluate_call`, not approval).
 
 ## Done
 - E1 Core — `detection` (fingerprint + injection/poisoning + invisible/homoglyph), `engine` (trust loop: allow/block/quarantine/require-approval), `attestation` (HMAC signed badge, tamper-evident), `owasp` (MCP Top-10 map), `corpus` runner, `cli` (scan/verify/ci).
@@ -11,11 +11,10 @@ _Working memory. Update at the end of each session._
 - Demo — A/B canary proof + rug-pull quarantine + tamper-evident badge.
 
 ## Next (see ROADMAP.md and SPRINT-2026-06-27-to-2026-07-05.md)
-- Day 3 CLI polish: surface OWASP mapping in `scan`/`verify`/`ci` output.
-- Eval polish: preserve 8/8 corpus, add drift eval if cheap.
-- E3 (P1): flesh out ADK Scanner/Red-team/Attestor agents — timebox 8h.
-- Cloud Run deploy via `app/` + `agents-cli-manifest.yaml` — timebox.
-- Video + ≤2,500-word writeup.
+- Day-2 leftover: wire `make demo` through the proxy bridge (#5).
+- E3 (P1): flesh out ADK Scanner/Red-team/Attestor agents (#8) — timebox 8h.
+- Cloud Run deploy via `app/` + `agents-cli-manifest.yaml` (#9) — timebox.
+- README final pass + architecture image (#10), video (#11), writeup (#12), submission dry run (#13).
 
 ## Open
 - Signing scheme: HMAC now → Ed25519 (P1).

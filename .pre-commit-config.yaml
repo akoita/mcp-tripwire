@@ -10,7 +10,10 @@ repos:
       - id: check-added-large-files
         args: ["--maxkb=512"]         # blocks accidental PDF/binary commits
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9
+    # Must track the ruff version resolved by `uv sync --extra dev` (currently
+    # 0.15.x). Drift across major versions causes a reformat loop where
+    # pre-commit fights `make check` on the same file.
+    rev: v0.15.20
     hooks:
       - id: ruff
         args: ["--fix"]
