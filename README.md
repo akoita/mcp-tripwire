@@ -78,7 +78,7 @@ scripts/           harness_guardrails.py (hard rules as code)
 ```
 
 ## Related work (honest positioning)
-MCP security is **not** greenfield. Static scanners ([Invariant `mcp-scan`](https://invariantlabs.ai/blog/introducing-mcp-scan), [Snyk agent-scan]), runtime gateways ([Prompt Security MCP Gateway], [MCP Guardian]) and the [OWASP MCP Top 10](https://owasp.org/www-project-mcp-top-10/) taxonomy already exist. We make **no novelty claim on scanning**. Tripwire's contribution is the narrower, sharper wedge: a small, explainable, OSS trust gateway centred on **continuous schema integrity + portable, independently-verifiable attestations**, with every finding mapped to the OWASP MCP Top 10.
+MCP security is **not** greenfield. Static scanners (e.g. [Invariant `mcp-scan`](https://invariantlabs.ai/blog/introducing-mcp-scan), Snyk's agent-scan tooling), runtime gateways (e.g. Prompt Security's MCP Gateway, MCP Guardian) and the [OWASP MCP Top 10](https://owasp.org/www-project-mcp-top-10/) taxonomy already exist. We make **no novelty claim on scanning**. Tripwire's contribution is the narrower, sharper wedge: a small, explainable, OSS trust gateway centred on **continuous schema integrity + portable, independently-verifiable attestations**, with every finding mapped to the OWASP MCP Top 10.
 
 ## License
 Apache-2.0 — see [LICENSE](LICENSE). Standards: AI-agent conventions in [AGENTS.md](AGENTS.md) (Claude Code / Codex / Gemini-Antigravity).
