@@ -60,5 +60,8 @@ eval:  ## Run the attack corpus and report N/M blocked (non-deterministic layer 
 demo:  ## Run the A/B proof-moment demo (canary secret, local fake sink)
 	@if command -v uv >/dev/null 2>&1; then uv run python examples/demo.py; else PYTHONPATH=src $(RUN_PYTHON) examples/demo.py || PYTHONPATH=src $(PYTHON) examples/demo.py; fi
 
+demo-proxy:  ## Same proof moment, end-to-end through the StdioTripwireProxy bridge
+	@if command -v uv >/dev/null 2>&1; then uv run python examples/demo_proxy.py; else PYTHONPATH=src $(RUN_PYTHON) examples/demo_proxy.py || PYTHONPATH=src $(PYTHON) examples/demo_proxy.py; fi
+
 clean:  ## Remove caches and eval artifacts
 	rm -rf .pytest_cache .ruff_cache **/__pycache__ artifacts/traces/* artifacts/grade_results/* 2>/dev/null || true

@@ -43,7 +43,8 @@ Implementation status:
 ## Quickstart
 ```bash
 make check                 # bootstraps dev tools, then lint + test + guardrails
-make demo                  # the A/B proof moment (canary secret, local fake sink)
+make demo                  # engine-level A/B proof moment (canary secret, local fake sink)
+make demo-proxy            # same proof moment, end-to-end through the StdioTripwireProxy bridge
 make eval                  # run the attack corpus -> "N/M attacks blocked"
 ```
 
