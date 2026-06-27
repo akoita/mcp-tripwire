@@ -63,5 +63,8 @@ demo:  ## Run the A/B proof-moment demo (canary secret, local fake sink)
 demo-proxy:  ## Same proof moment, end-to-end through the StdioTripwireProxy bridge
 	@if command -v uv >/dev/null 2>&1; then uv run python examples/demo_proxy.py; else PYTHONPATH=src $(RUN_PYTHON) examples/demo_proxy.py || PYTHONPATH=src $(PYTHON) examples/demo_proxy.py; fi
 
+demo-adk:  ## ADK multi-agent demo: Scanner / Red-team / Attestor (requires `[agent]` extra)
+	@if command -v uv >/dev/null 2>&1; then uv run --extra agent python examples/demo_adk.py; else PYTHONPATH=src $(RUN_PYTHON) examples/demo_adk.py || PYTHONPATH=src $(PYTHON) examples/demo_adk.py; fi
+
 clean:  ## Remove caches and eval artifacts
 	rm -rf .pytest_cache .ruff_cache **/__pycache__ artifacts/traces/* artifacts/grade_results/* 2>/dev/null || true
