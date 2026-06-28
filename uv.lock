@@ -564,7 +564,9 @@ source = { editable = "." }
 agent = [
     { name = "fastapi" },
     { name = "google-adk" },
+    { name = "httpx-sse" },
     { name = "mcp" },
+    { name = "sse-starlette" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 dev = [
@@ -572,18 +574,24 @@ dev = [
     { name = "pytest" },
     { name = "ruff" },
 ]
+signing = [
+    { name = "cryptography" },
+]
 
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", marker = "extra == 'signing'", specifier = ">=42.0.0" },
     { name = "fastapi", marker = "extra == 'agent'", specifier = ">=0.111.0" },
     { name = "google-adk", marker = "extra == 'agent'", specifier = ">=0.5.0" },
+    { name = "httpx-sse", marker = "extra == 'agent'", specifier = ">=0.4.0" },
     { name = "jsonschema", marker = "extra == 'dev'", specifier = ">=4.0.0" },
     { name = "mcp", marker = "extra == 'agent'", specifier = ">=1.2.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6.0" },
+    { name = "sse-starlette", marker = "extra == 'agent'", specifier = ">=2.1.0" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'agent'", specifier = ">=0.30.0" },
 ]
-provides-extras = ["agent", "dev"]
+provides-extras = ["agent", "dev", "signing"]
 
 [[package]]
 name = "opentelemetry-api"
