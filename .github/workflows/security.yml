@@ -18,7 +18,9 @@ jobs:
       - uses: astral-sh/setup-uv@v3
       - run: uv sync --extra dev
       - name: Security lint (ruff flake8-bandit)
-        run: uv run ruff check --select S .
+        # --select S overrides pyproject's `ignore = ["S101"]`; re-apply it explicitly
+        # so CI matches the local `make check` policy (asserts allowed for type-narrowing).
+        run: uv run ruff check --select S --extend-ignore S101 .
       - name: Harness guardrails (no secrets / no rogue deps / no unflagged stubs)
         run: uv run python scripts/harness_guardrails.py
       - name: Dependency audit

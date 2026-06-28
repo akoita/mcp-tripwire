@@ -11,7 +11,7 @@ Built for the Kaggle **AI Agents Intensive Vibe Coding Capstone** (Freestyle tra
 |---|---|
 | Attack corpus blocked | **9 / 9** (`make eval`) |
 | False positives on clean tools | **0 / 4** |
-| Tests (unit + integration) | **57** (4 ADK/HTTP-gated tests skip without `[agent]`) |
+| Tests (unit + integration) | **58** (4 ADK/HTTP-gated tests skip without `[agent]`) |
 | Deterministic core dependencies | **stdlib only** (verified by `scripts/harness_guardrails.py`) |
 | Demos (each its own `make` target) | `demo` · `demo-proxy` · `demo-adk` |
 
@@ -89,7 +89,7 @@ Implementation status:
 
 ```bash
 # One-time bootstrap (uv ≥ 0.5; installs ruff + pytest)
-make check                 # lint + 57 tests + harness guardrails (hard rules #2/#3/#4/#9)
+make check                 # lint + 58 tests + harness guardrails (hard rules #2/#3/#4/#9)
 
 # The three demos — each a different face of the same trust loop
 make demo                  # engine-level: approve / evaluate_call / verify_badge (no transport)
@@ -128,7 +128,7 @@ The LLM is the **explainer and router**; the **verdict** always comes from the d
 | **Agent skills (`.agents/skills/`)** | three skills: `scanning_mcp_servers`, `triaging_owasp_mcp_findings`, `issuing_mcp_trust_badge` |
 | **Agents CLI** | project scaffolded with `agents-cli scaffold enhance .`; spec in [.agents-cli-spec.md](.agents-cli-spec.md); manifest in [agents-cli-manifest.yaml](agents-cli-manifest.yaml) |
 | **Multi-agent (ADK)** | Scanner / Red-team / Attestor + coordinator in [`src/tripwire/agents/`](src/tripwire/agents/) and [`app/agent.py`](app/agent.py); Attestor uses `FunctionTool(require_confirmation=True)` for HITL badge minting |
-| **Two-layer eval** | deterministic `pytest` (57 tests) + non-deterministic `agents-cli eval` datasets in [`tests/eval/datasets/`](tests/eval/datasets/) |
+| **Two-layer eval** | deterministic `pytest` (58 tests) + non-deterministic `agents-cli eval` datasets in [`tests/eval/datasets/`](tests/eval/datasets/) |
 | **Deployability** | [`Dockerfile`](Dockerfile), [`app/fast_api_app.py`](app/fast_api_app.py), Cloud Run target in [agents-cli-manifest.yaml](agents-cli-manifest.yaml) |
 | **Quality gates** | pre-commit (`ruff`, secret detection, [`no_commit_to_main.sh`](scripts/no_commit_to_main.sh)) + GitHub Actions (`ci`, `security`, `ai-review` under [.github/workflows/](.github/workflows/)) |
 

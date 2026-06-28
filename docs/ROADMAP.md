@@ -43,7 +43,7 @@ SARIF is the fastest usefulness jump for the audience that matters (security tea
 
 | # | Issue | RFC | Impl | What |
 |---|---|---|---|---|
-| 1st | [#32](https://github.com/akoita/mcp-tripwire/issues/32) | [RFC-0003](rfc/RFC-0003-sarif-output.md) ✅ accepted | 🟡 [PR #41](https://github.com/akoita/mcp-tripwire/pull/41) in review | **SARIF output** for `scan` + `eval`. Lands findings in GitHub Code Scanning / GitLab SAST with zero integration code. Biggest single move toward "useful" because it meets security teams where they already work. |
+| 1st | [#32](https://github.com/akoita/mcp-tripwire/issues/32) | [RFC-0003](rfc/RFC-0003-sarif-output.md) ✅ accepted | ✅ done ([PR #41](https://github.com/akoita/mcp-tripwire/pull/41) / e4ae958) | **SARIF output** for `scan` + `eval`. Lands findings in GitHub Code Scanning / GitLab SAST with zero integration code. Biggest single move toward "useful" because it meets security teams where they already work. |
 | 2nd | [#31](https://github.com/akoita/mcp-tripwire/issues/31) | [RFC-0002](rfc/RFC-0002-ed25519-signing.md) ✅ accepted | ⬜ not started | **Ed25519 signing** over HMAC. Turns the badge SARIF is already carrying into something a third party can verify with only the public key — the README's "portable, independently verifiable" claim, finally true. |
 | 3rd | [#33](https://github.com/akoita/mcp-tripwire/issues/33) | RFC-0004 ⬜ not started | — | **HTTP/SSE MCP transport** in the proxy. Broadens the deployable surface to cloud-hosted MCP servers. Necessary for the external-integration acceptance gate, since most non-fixture MCP servers worth pointing Tripwire at use SSE. |
 
