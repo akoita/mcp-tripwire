@@ -7,8 +7,10 @@ pipelines without each caller installing the SDK locally.
 Endpoints:
     GET  /healthz   liveness probe (Cloud Run convention)
     POST /scan      {"tool": {...}} -> scan_tool_descriptor() shape
+                    Accept: application/sarif+json -> SARIF 2.1.0 (RFC-0003)
     POST /verify    {"badge": {...}} -> {"valid", "status", "reason", "tool"}
     GET  /eval      runs the default attack corpus -> CorpusResult dict
+                    Accept: application/sarif+json -> SARIF 2.1.0 (RFC-0003)
 
 The stdio MCP gateway (transparent bridge for an MCP client to talk through
 a deployed Tripwire instance) is a separate, larger surface — tracked in
@@ -24,7 +26,8 @@ from app.app_utils.telemetry import setup_telemetry
 setup_telemetry()
 
 try:
-    from fastapi import FastAPI
+    from fastapi import FastAPI, Request
+    from fastapi.responses import JSONResponse
     from pydantic import BaseModel
 except ImportError as exc:  # pragma: no cover - only at deploy time
     raise RuntimeError("Install the served gateway deps: uv sync --extra agent") from exc
@@ -35,6 +38,8 @@ except ImportError as exc:  # pragma: no cover - only at deploy time
 from tripwire import attestation  # noqa: E402
 from tripwire.agents.scanner_agent import scan_tool_descriptor  # noqa: E402
 from tripwire.corpus import load_corpus, run_corpus  # noqa: E402
+from tripwire.detection import Finding, Severity, scan_tool  # noqa: E402
+from tripwire.sarif import SarifInput, from_corpus_rows, to_sarif  # noqa: E402
 
 app = FastAPI(
     title="MCP-Tripwire Gateway",
@@ -47,6 +52,22 @@ app = FastAPI(
 
 
 _REQUIRED_BADGE_FIELDS = ("tool", "fingerprint", "sig")
+SARIF_MIME = "application/sarif+json"
+
+
+def _wants_sarif(request: Request) -> bool:
+    """Return True iff the caller asked for `application/sarif+json` via Accept.
+
+    Conservative: only flips on an exact substring match — `*/*` does NOT
+    trigger SARIF (browsers default to that and would otherwise get a
+    confusing SARIF blob). Operators opt in explicitly.
+    """
+    accept = request.headers.get("accept", "")
+    return SARIF_MIME in accept
+
+
+def _sev_from_str(s: str) -> Severity:
+    return {str(sev): sev for sev in Severity}.get(s, Severity.MEDIUM)
 
 
 def _signing_key() -> str:
@@ -68,12 +89,19 @@ def healthz() -> dict:
 
 
 @app.post("/scan")
-def scan(req: ScanRequest) -> dict:
+def scan(req: ScanRequest, request: Request):
     """Scan an MCP tool descriptor; return findings grouped by OWASP category.
 
-    Same return shape as the agent-layer `scan_tool_descriptor` function and
-    the `tripwire scan` CLI — one source of truth for the verdict format.
+    Default response shape is the dict returned by `scan_tool_descriptor`.
+    With `Accept: application/sarif+json` the response is a SARIF 2.1.0
+    document (RFC-0003) with `Content-Type: application/sarif+json`.
     """
+    if _wants_sarif(request):
+        findings = list(scan_tool(req.tool))
+        sarif_doc = to_sarif(
+            [SarifInput(findings=tuple(findings), input_uri="urn:tripwire:input:http-body")]
+        )
+        return JSONResponse(content=sarif_doc, media_type=SARIF_MIME)
     return scan_tool_descriptor(req.tool)
 
 
@@ -110,16 +138,23 @@ def verify(req: VerifyRequest) -> dict:
 
 
 @app.get("/eval")
-def eval_corpus() -> dict:
+def eval_corpus(request: Request):
     """Run the default attack corpus; return real counts (Hard Rule #6).
 
-    Identical schema to `tripwire ci --json` so CLI and HTTP callers share
-    one downstream parser. Never reads from a cache; every call re-runs
-    the corpus.
+    Default shape is identical to `tripwire ci --json` (one downstream
+    parser across CLI + HTTP). With `Accept: application/sarif+json` the
+    response is a SARIF 2.1.0 document covering every corpus case
+    (one combined `runs[]`, per-case `properties.tripwire_case` on
+    every result).
     """
     cases = load_corpus()
     result = run_corpus(cases, signing_key=_signing_key())
     passed = result.all_attacks_blocked and not result.false_positives
+
+    if _wants_sarif(request):
+        sarif_doc = to_sarif(from_corpus_rows(result.rows))
+        return JSONResponse(content=sarif_doc, media_type=SARIF_MIME)
+
     return {
         "attacks_total": result.attacks_total,
         "attacks_blocked": result.attacks_blocked,
@@ -128,3 +163,8 @@ def eval_corpus() -> dict:
         "passed": passed,
         "rows": result.rows,
     }
+
+
+# Silence ruff's "unused import" for the symbols we keep around for
+# downstream callers that import them through this module's namespace.
+_ = (Finding, _sev_from_str)

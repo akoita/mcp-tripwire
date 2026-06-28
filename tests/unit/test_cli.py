@@ -147,3 +147,57 @@ def test_ci_human_mode_still_works():
     rc, out = _run("ci", env={"NO_COLOR": "1"})
     assert "attacks blocked" in out.lower() or "blocked" in out.lower()
     assert rc in (0, 1)
+
+
+# --- sarif (RFC-0003) -----------------------------------------------------
+
+
+def test_scan_sarif_clean_yields_empty_results(tmp_path: Path):
+    manifest = tmp_path / "clean.json"
+    manifest.write_text(json.dumps({"tools": [_clean_tool()]}))
+    rc, out = _run("scan", "--sarif", str(manifest), env={"NO_COLOR": "1"})
+    assert rc == 0
+    doc = json.loads(out)
+    assert doc["version"] == "2.1.0"
+    assert doc["runs"][0]["results"] == []
+
+
+def test_scan_sarif_poisoned_yields_results_with_file_uri(tmp_path: Path):
+    manifest = tmp_path / "poisoned.json"
+    manifest.write_text(json.dumps({"tools": [_poisoned_tool()]}))
+    rc, out = _run("scan", "--sarif", str(manifest), env={"NO_COLOR": "1"})
+    assert rc == 1
+    doc = json.loads(out)
+    assert doc["version"] == "2.1.0"
+    results = doc["runs"][0]["results"]
+    assert len(results) >= 1
+    # File scans use the real path as artifactLocation.uri.
+    assert results[0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"].endswith(
+        "poisoned.json"
+    )
+
+
+def test_ci_sarif_covers_every_corpus_case_with_attribution():
+    rc, out = _run("ci", "--sarif", env={"NO_COLOR": "1"})
+    doc = json.loads(out)
+    assert doc["version"] == "2.1.0"
+    results = doc["runs"][0]["results"]
+    # Every result carries tripwire_case attribution.
+    for r in results:
+        assert "tripwire_case" in r["properties"]
+        assert r["properties"]["tripwire_case"]["id"]
+    case_ids = {r["properties"]["tripwire_case"]["id"] for r in results}
+    # d1 is the drift case; must be present even though scan_tool returns
+    # nothing for the mutated descriptor (synthetic MCP04-DRIFT covers it).
+    assert "d1" in case_ids, f"d1 drift case missing from SARIF; got: {sorted(case_ids)}"
+    assert rc in (0, 1)
+
+
+def test_ci_mutually_exclusive_flags_fails():
+    """argparse must refuse --json + --sarif together (SystemExit on bad args)."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        _run("ci", "--json", "--sarif", env={"NO_COLOR": "1"})
+    # argparse exits 2 on bad args; we just need non-zero.
+    assert exc_info.value.code != 0

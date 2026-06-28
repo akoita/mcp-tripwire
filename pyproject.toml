@@ -24,7 +24,10 @@ agent = [
   "mcp>=1.2.0",
   "uvicorn[standard]>=0.30.0",
 ]
-dev = ["ruff>=0.6.0", "pytest>=8.0.0"]
+# `jsonschema` is for SARIF-output schema validation in tests/integration/
+# (per RFC-0003). Lighter alternative to `sarif-tools` which pulled matplotlib
+# + 17 other packages; we only need shape validation, not chart rendering.
+dev = ["ruff>=0.6.0", "pytest>=8.0.0", "jsonschema>=4.0.0"]
 
 [project.scripts]
 tripwire = "tripwire.cli:main"

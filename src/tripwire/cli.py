@@ -1,8 +1,8 @@
 """`tripwire` CLI — scan / verify / ci.
 
-    tripwire scan <manifest.json>          # scan a tool or manifest for poisoning
-    tripwire verify <badge.json>           # verify a signed trust badge
-    tripwire ci [--corpus PATH] [--json]   # run the attack corpus; non-zero exit if any survive
+    tripwire scan <manifest.json> [--sarif]              # scan; SARIF on stdout with --sarif
+    tripwire verify <badge.json>                          # verify a signed trust badge
+    tripwire ci [--corpus PATH] [--json | --sarif]        # run the attack corpus
 
 The CLI is the agents-cli "Agent skill"-style entrypoint and the CI gate.
 Signing key comes from $TRIPWIRE_SIGNING_KEY (Hard Rule #3 — never hardcoded).
@@ -84,7 +84,8 @@ def _group_by_owasp(findings: list[Finding]) -> dict[str, list[Finding]]:
 
 def cmd_scan(args: argparse.Namespace) -> int:
     color = _use_color()
-    manifest = json.loads(Path(args.manifest).read_text(encoding="utf-8"))
+    manifest_path = Path(args.manifest)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     all_findings: list[Finding] = []
     worst: Severity | None = None
     clean: list[str] = []
@@ -97,6 +98,17 @@ def cmd_scan(args: argparse.Namespace) -> int:
         for f in findings:
             all_findings.append(f)
             worst = f.severity if worst is None else max(worst, f.severity)
+
+    if getattr(args, "sarif", False):
+        # SARIF 2.1.0 on stdout — exit code semantics unchanged.
+        from .sarif import SarifInput, to_sarif  # noqa: PLC0415 — optional output path
+
+        sarif_doc = to_sarif(
+            [SarifInput(findings=tuple(all_findings), input_uri=str(manifest_path.resolve()))]
+        )
+        json.dump(sarif_doc, sys.stdout, indent=2, sort_keys=True)
+        sys.stdout.write("\n")
+        return EXIT_FAIL if (worst is not None and worst >= Severity.HIGH) else EXIT_OK
 
     for name in clean:
         print(f"  {_paint('✓', _C_GREEN, on=color)} {name}: clean")
@@ -156,6 +168,15 @@ def cmd_ci(args: argparse.Namespace) -> int:
     result = run_corpus(cases, signing_key=_key())
     passed = result.all_attacks_blocked and not result.false_positives
 
+    if getattr(args, "sarif", False):
+        # One combined SARIF document covering every corpus case.
+        from .sarif import from_corpus_rows, to_sarif  # noqa: PLC0415
+
+        sarif_doc = to_sarif(from_corpus_rows(result.rows))
+        json.dump(sarif_doc, sys.stdout, indent=2, sort_keys=True)
+        sys.stdout.write("\n")
+        return EXIT_OK if passed else EXIT_FAIL
+
     if args.json:
         # Machine-parseable single JSON document (Rule #6 — no invented numbers).
         payload = {
@@ -195,6 +216,11 @@ def main(argv: list[str] | None = None) -> int:
 
     p_scan = sub.add_parser("scan", help="scan a tool/manifest for poisoning")
     p_scan.add_argument("manifest")
+    p_scan.add_argument(
+        "--sarif",
+        action="store_true",
+        help="emit SARIF 2.1.0 on stdout (for GitHub Code Scanning et al.)",
+    )
     p_scan.set_defaults(func=cmd_scan)
 
     p_verify = sub.add_parser("verify", help="verify a signed trust badge")
@@ -203,7 +229,14 @@ def main(argv: list[str] | None = None) -> int:
 
     p_ci = sub.add_parser("ci", help="run the attack corpus")
     p_ci.add_argument("--corpus", default=str(DEFAULT_CORPUS))
-    p_ci.add_argument("--json", action="store_true", help="emit machine-parseable JSON")
+    # `--json` and `--sarif` are mutually exclusive output modes.
+    ci_out = p_ci.add_mutually_exclusive_group()
+    ci_out.add_argument("--json", action="store_true", help="emit machine-parseable JSON")
+    ci_out.add_argument(
+        "--sarif",
+        action="store_true",
+        help="emit SARIF 2.1.0 on stdout (one combined runs[] for the whole corpus)",
+    )
     p_ci.set_defaults(func=cmd_ci)
 
     args = parser.parse_args(argv)

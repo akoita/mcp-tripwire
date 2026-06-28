@@ -78,11 +78,12 @@ Implementation status:
 | Transparent stdio MCP proxy bridge (E2) | ✅ implemented | [`src/tripwire/proxy.py`](src/tripwire/proxy.py) — design in [RFC-0001](docs/rfc/RFC-0001-e2-stdio-proxy-bridge.md) |
 | Attack corpus runner (incl. drift case) | ✅ implemented | [`src/tripwire/corpus.py`](src/tripwire/corpus.py), [`corpus/attacks.jsonl`](corpus/attacks.jsonl) |
 | ADK Scanner / Red-team / Attestor + coordinator | ✅ implemented | [`src/tripwire/agents/`](src/tripwire/agents/), [`app/agent.py`](app/agent.py) — spec in [.agents-cli-spec.md](.agents-cli-spec.md) |
-| HTTP gateway endpoints (`/scan` · `/verify` · `/eval` · `/healthz`) | ✅ implemented | [`app/fast_api_app.py`](app/fast_api_app.py) — 8 endpoint tests in [`tests/integration/test_http_endpoints.py`](tests/integration/test_http_endpoints.py); same verdict shapes as the CLI |
+| HTTP gateway endpoints (`/scan` · `/verify` · `/eval` · `/healthz`) | ✅ implemented | [`app/fast_api_app.py`](app/fast_api_app.py) — same verdict shapes as the CLI; SARIF via `Accept: application/sarif+json` |
+| SARIF 2.1.0 output for `scan` + `ci` | ✅ implemented | [`src/tripwire/sarif.py`](src/tripwire/sarif.py) — `tripwire scan --sarif` · `tripwire ci --sarif` · GH Code Scanning runbook in [`docs/runbooks/sarif-in-gh-actions.md`](docs/runbooks/sarif-in-gh-actions.md) |
 | Local Docker deploy (verified end-to-end) | ✅ implemented | [`Dockerfile`](Dockerfile) + smoke in [`docs/runbooks/deploy.md`](docs/runbooks/deploy.md) |
 | Cloud Run deploy via `agents-cli deploy` | 🟢 staged | configured in [`agents-cli-manifest.yaml`](agents-cli-manifest.yaml); deploy steps + rollback in [`docs/runbooks/deploy.md`](docs/runbooks/deploy.md) — requires GCP creds, not yet pushed |
-| Stdio MCP gateway over HTTP/SSE (proxy bridge in the cloud) | 🟡 planned | future surface; the current Cloud Run service is policy-only (scan / verify / eval), not a transparent MCP bridge |
-| Signing scheme: HMAC-SHA256 → Ed25519 | 🟡 planned | tracked in [docs/STATUS.md](docs/STATUS.md) |
+| Stdio MCP gateway over HTTP/SSE (proxy bridge in the cloud) | 📝 design-locked | [RFC-0004](docs/rfc/RFC-0004-http-sse-proxy-transport.md) (review-requested), implementation pending [#33](https://github.com/akoita/mcp-tripwire/issues/33) |
+| Signing scheme: HMAC-SHA256 → Ed25519 | 📝 design-locked | [RFC-0002](docs/rfc/RFC-0002-ed25519-signing.md) accepted, implementation pending [#31](https://github.com/akoita/mcp-tripwire/issues/31) |
 
 ## Quickstart
 
