@@ -2,10 +2,12 @@
 
 _Working memory. Update at the end of each session._
 
-**Now:** Day 3 done — CLI polish (#6) + drift eval (#7) landed. 32 tests pass. `make eval` reports `9/9 attacks blocked · 0 false-positives on 4 clean tools` (the +1 is a rug-pull case caught by `evaluate_call`, not approval).
+**Now (v0.2 in flight):** SARIF (#32) + Ed25519 over HMAC (#31) landed; RFC-0004 (#33 HTTP/SSE) accepted, implementation next. 109 tests pass with all extras (`make check` reports 69/27 in dev-only).
+
+_Older milestones:_ Day 3 — CLI polish (#6) + drift eval (#7); 32 tests at that tag. `make eval` still reports `9/9 attacks blocked · 0 false-positives on 4 clean tools`.
 
 ## Done
-- E1 Core — `detection` (fingerprint + injection/poisoning + invisible/homoglyph), `engine` (trust loop: allow/block/quarantine/require-approval), `attestation` (HMAC signed badge, tamper-evident), `owasp` (MCP Top-10 map), `corpus` runner, `cli` (scan/verify/ci).
+- E1 Core — `detection` (fingerprint + injection/poisoning + invisible/homoglyph), `engine` (trust loop: allow/block/quarantine/require-approval), `attestation` (alg-dispatching: HMAC default, Ed25519 via `[signing]` extra), `signing/` subpackage (HmacBackend + Ed25519Backend + env-driven resolvers + VerifyRegistry), `owasp` (MCP Top-10 map), `corpus` runner, `cli` (scan/verify [+ --pub] / ci / key gen / key pub).
 - E2 Proxy — transparent stdio MCP bridge: two-task asyncio pump, `tools/list` filter + badge attach, live-tools cache, `tools/call` drift short-circuit (JSON-RPC error `-32001` with tripwire metadata), structured stderr log lines, end-to-end integration test against a subprocess fixture. Re-list now detects rug-pull on already-approved tools.
 - Harness — `AGENTS.md` SSOT + `CLAUDE.md`/`GEMINI.md` symlinks; `.agents/skills` (+ `.claude`/`.gemini` adapters); `scripts/harness_guardrails.py`; `make check`; CI; docs taxonomy. Pre-commit active locally.
 - Demo — A/B canary proof + rug-pull quarantine + tamper-evident badge.
@@ -17,9 +19,11 @@ _Working memory. Update at the end of each session._
 - README final pass + architecture image (#10), video (#11), writeup (#12), submission dry run (#13).
 
 ## Open
-- Signing scheme: HMAC now → Ed25519 (P1).
 - Deploy: confirm GCP project/billing or fall back to documented local run.
 - GitHub Actions billing blocked on private repo — CI workflows present but dormant; local `make check` + pre-commit are the active quality gate.
 
 ## Resolved
+- Signing scheme: HMAC now → Ed25519 — landed in [#31](https://github.com/akoita/mcp-tripwire/issues/31) per RFC-0002; HMAC remains the zero-deps default, Ed25519 ships behind `[signing]`.
+- SARIF 2.1.0 output — landed in [#32](https://github.com/akoita/mcp-tripwire/issues/32) per RFC-0003 (`tripwire scan/ci --sarif`).
+- RFC-0004 (HTTP/SSE proxy) — accepted 2026-06-28; implementation #33 unblocked.
 - GitHub repo: published private at `akoita/mcp-tripwire` (2026-06-27).

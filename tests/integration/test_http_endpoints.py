@@ -188,3 +188,65 @@ def test_eval_returns_corpus_result():
     assert (body["passed"]) == (
         body["attacks_blocked"] == body["attacks_total"] and body["false_positives"] == 0
     )
+
+
+# --- /verify Ed25519 case (RFC-0002 / #31 group 7) --------------------------
+
+
+def _ed25519_available() -> bool:
+    try:
+        import cryptography  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+@pytest.mark.skipif(
+    not _ed25519_available(),
+    reason="`cryptography` not installed (uv sync --extra signing)",
+)
+def test_verify_ed25519_badge_via_public_key_env(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """POST /verify dispatches to Ed25519 when TRIPWIRE_PUBLIC_KEY_PATH is set."""
+    from tripwire.signing.ed25519_backend import Ed25519Backend
+
+    backend = Ed25519Backend.generate()
+    pub_path = tmp_path / "pub.pem"
+    pub_path.write_bytes(backend.public_key_pem())
+    monkeypatch.setenv("TRIPWIRE_PUBLIC_KEY_PATH", str(pub_path))
+    # Ensure the legacy HMAC path doesn't accidentally match.
+    monkeypatch.delenv("TRIPWIRE_SIGNING_KEY", raising=False)
+
+    eng = TripwireEngine(signing_backend=backend)
+    eng.approve(_clean_tool(), issued_at="2026-01-01T00:00:00+00:00")
+    badge = eng.badge_for("get_weather")
+    assert badge["alg"] == "Ed25519"
+
+    resp = client.post("/verify", json={"badge": badge})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["valid"] is True
+    assert body["status"] == "valid"
+    assert body["tool"] == "get_weather"
+
+
+@pytest.mark.skipif(not _ed25519_available(), reason="`cryptography` not installed")
+def test_verify_ed25519_badge_wrong_pubkey(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """Wrong public key → tampered status, not a crash."""
+    from tripwire.signing.ed25519_backend import Ed25519Backend
+
+    signer = Ed25519Backend.generate()
+    other = Ed25519Backend.generate()
+    pub_path = tmp_path / "wrong_pub.pem"
+    pub_path.write_bytes(other.public_key_pem())
+    monkeypatch.setenv("TRIPWIRE_PUBLIC_KEY_PATH", str(pub_path))
+    monkeypatch.delenv("TRIPWIRE_SIGNING_KEY", raising=False)
+
+    eng = TripwireEngine(signing_backend=signer)
+    eng.approve(_clean_tool(), issued_at="2026-01-01T00:00:00+00:00")
+    badge = eng.badge_for("get_weather")
+
+    resp = client.post("/verify", json={"badge": badge})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["valid"] is False
+    assert body["status"] == "tampered"
