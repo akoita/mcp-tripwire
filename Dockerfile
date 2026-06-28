@@ -5,7 +5,9 @@ FROM python:3.12-slim
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
-COPY pyproject.toml ./
+# pyproject.toml references README.md as the package long-description; copy
+# it before `uv pip install -e .` so hatchling's editable build doesn't fail.
+COPY pyproject.toml README.md ./
 COPY src ./src
 COPY app ./app
 COPY corpus ./corpus
