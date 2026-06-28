@@ -1,6 +1,6 @@
 # Ed25519 third-party verifiable badges
 
-> **Status:** 📝 design-locked · **Owner:** akoita · **Indexed by:** [docs/features/README.md](README.md)
+> **Status:** ✅ implemented · **Owner:** akoita · **Indexed by:** [docs/features/README.md](README.md)
 > **Design:** [RFC-0002 (accepted)](../rfc/RFC-0002-ed25519-signing.md) · **Implementation:** [#31](https://github.com/akoita/mcp-tripwire/issues/31)
 
 ## Value (what this gives the agent / auditor)
@@ -38,14 +38,11 @@ The wire format is **identical** to today — only the `alg` value and the `sig`
 
 The full architecture, key formats, configuration table, test plan, and Day-N (~8h) implementation plan are in [RFC-0002](../rfc/RFC-0002-ed25519-signing.md).
 
-## Status & next step
+## Status
 
-Per the v0.2 ordering, Ed25519 implementation follows SARIF. When the implementation PR merges:
+**Implemented** in [#31](https://github.com/akoita/mcp-tripwire/issues/31) — [PR #44](https://github.com/akoita/mcp-tripwire/pull/44) (slots 1-4: SSOT widening, `signing/` subpackage, `Ed25519Backend`, env-driven resolvers, alg-dispatcher) plus a follow-up PR landing the CLI (`tripwire key gen` / `tripwire key pub` / `tripwire verify --pub`) and the Ed25519 case on the FastAPI `/verify` endpoint.
 
-- This page flips to ✅ implemented.
-- The [README implementation-status table](../../README.md#implementation-status) row "Signing scheme: HMAC-SHA256 → Ed25519" flips to ✅.
-- [signed-trust-badges.md](signed-trust-badges.md) status flips from 🟡 partial to ✅ implemented.
-- [sarif-output.md](sarif-output.md)'s `properties.tripwire_badge` slot starts carrying real Ed25519 badges (no shape change — the wire format was forward-compatible by design).
+Wire format unchanged on the badge side; only the new `alg="Ed25519"` value and base64-encoded `sig` are added. HMAC stays the default — operators opt into Ed25519 by configuring `TRIPWIRE_PRIVATE_KEY_PATH` (sign) / `TRIPWIRE_PUBLIC_KEY_PATH` (verify) or by installing the `[signing]` extra (`pip install 'mcp-tripwire[signing]'`).
 
 ## Cross-references
 

@@ -70,6 +70,23 @@ def _signing_key() -> str:
     return os.environ.get("TRIPWIRE_SIGNING_KEY", "dev-only-change-me")
 
 
+def _verifier():
+    """Resolve a verify-side dispatcher. RFC-0002 #31.
+
+    If any of ``TRIPWIRE_PUBLIC_KEY_PATH`` (Ed25519) or
+    ``TRIPWIRE_SIGNING_KEY`` (HMAC) is set, returns a populated
+    ``VerifyRegistry`` so a single process accepts a mixed-alg stream.
+    Otherwise falls back to the legacy dev key — ``/verify`` keeps working
+    out of the box for tutorials/demos that haven't configured anything.
+    """
+    from tripwire.signing import resolve_verify_registry
+
+    registry = resolve_verify_registry()
+    if registry:
+        return registry
+    return _signing_key()
+
+
 class ScanRequest(BaseModel):
     tool: dict
 
@@ -124,7 +141,7 @@ def verify(req: VerifyRequest) -> dict:
             "reason": f"malformed badge (missing {missing})",
             "tool": None,
         }
-    ok, reason = attestation.verify_badge(badge, _signing_key())
+    ok, reason = attestation.verify_badge(badge, _verifier())
     return {
         "valid": ok,
         "status": "valid" if ok else "tampered",

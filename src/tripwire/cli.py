@@ -152,12 +152,60 @@ def cmd_verify(args: argparse.Namespace) -> int:
         print(f"{invalid}: malformed badge (missing {missing})")
         return EXIT_BADGE_INVALID
 
-    valid, reason = attestation.verify_badge(badge, _key())
+    # --pub PATH overrides the legacy HMAC path with Ed25519 verification.
+    if getattr(args, "pub", None):
+        from .signing.ed25519_backend import Ed25519Backend
+
+        try:
+            pub_pem = Path(args.pub).read_bytes()
+        except OSError as e:
+            print(f"{invalid}: cannot read public key {args.pub} ({e.__class__.__name__})")
+            return EXIT_BADGE_INVALID
+        verifier = Ed25519Backend(public_key_pem=pub_pem)
+    else:
+        verifier = _key()
+    valid, reason = attestation.verify_badge(badge, verifier)
     if valid:
         print(f"{_paint('✓ VALID', _C_GREEN, on=color)}: {reason} (tool={badge.get('tool')!r})")
         return EXIT_BADGE_VALID
     print(f"{_paint('✗ TAMPERED', _C_RED, on=color)}: {reason} (tool={badge.get('tool')!r})")
     return EXIT_BADGE_TAMPERED
+
+
+# --- key (Ed25519 lifecycle) ---------------------------------------------
+
+
+def cmd_key_gen(args: argparse.Namespace) -> int:
+    """Generate a fresh Ed25519 keypair. Writes the private key to disk with
+    mode 0600 and prints the matching public key PEM on stdout (so it can be
+    piped into a pubkey deploy step). RFC-0002 / #31 slot 5."""
+    from .signing.ed25519_backend import Ed25519Backend
+
+    backend = Ed25519Backend.generate()
+    out = Path(args.out)
+    if out.exists() and not args.force:
+        print(f"✗ {out} already exists (re-run with --force to overwrite)", file=sys.stderr)
+        return EXIT_FAIL
+    out.write_bytes(backend.private_key_pem())
+    out.chmod(0o600)
+    sys.stdout.write(backend.public_key_pem().decode("ascii"))
+    print(f"✓ private key written to {out} (mode 0600)", file=sys.stderr)
+    return EXIT_OK
+
+
+def cmd_key_pub(args: argparse.Namespace) -> int:
+    """Print the public key PEM for a given private key. Read-only — useful
+    for derive-once-deploy-many workflows."""
+    from .signing.ed25519_backend import Ed25519Backend
+
+    try:
+        priv_pem = Path(args.input).read_bytes()
+    except OSError as e:
+        print(f"✗ cannot read {args.input}: {e.__class__.__name__}", file=sys.stderr)
+        return EXIT_FAIL
+    backend = Ed25519Backend(private_key_pem=priv_pem)
+    sys.stdout.write(backend.public_key_pem().decode("ascii"))
+    return EXIT_OK
 
 
 # --- ci -------------------------------------------------------------------
@@ -225,7 +273,23 @@ def main(argv: list[str] | None = None) -> int:
 
     p_verify = sub.add_parser("verify", help="verify a signed trust badge")
     p_verify.add_argument("badge")
+    p_verify.add_argument(
+        "--pub",
+        help="path to an Ed25519 public-key PEM; overrides HMAC verification",
+    )
     p_verify.set_defaults(func=cmd_verify)
+
+    p_key = sub.add_parser("key", help="Ed25519 key lifecycle (gen / pub)")
+    key_sub = p_key.add_subparsers(dest="key_cmd", required=True)
+    p_key_gen = key_sub.add_parser("gen", help="generate an Ed25519 keypair")
+    p_key_gen.add_argument(
+        "--out", default="tripwire-private.pem", help="output path for the private key PEM"
+    )
+    p_key_gen.add_argument("--force", action="store_true", help="overwrite an existing --out file")
+    p_key_gen.set_defaults(func=cmd_key_gen)
+    p_key_pub = key_sub.add_parser("pub", help="print the public-key PEM for a private key")
+    p_key_pub.add_argument("--in", dest="input", required=True, help="private-key PEM path")
+    p_key_pub.set_defaults(func=cmd_key_pub)
 
     p_ci = sub.add_parser("ci", help="run the attack corpus")
     p_ci.add_argument("--corpus", default=str(DEFAULT_CORPUS))

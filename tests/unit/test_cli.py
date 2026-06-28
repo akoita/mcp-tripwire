@@ -14,6 +14,8 @@ import os
 from contextlib import redirect_stdout
 from pathlib import Path
 
+import pytest
+
 from tripwire import TripwireEngine
 from tripwire.cli import (
     EXIT_BADGE_INVALID,
@@ -201,3 +203,111 @@ def test_ci_mutually_exclusive_flags_fails():
         _run("ci", "--json", "--sarif", env={"NO_COLOR": "1"})
     # argparse exits 2 on bad args; we just need non-zero.
     assert exc_info.value.code != 0
+
+
+# --- key / verify --pub (RFC-0002 / #31 slot 5) ------------------------------
+
+try:
+    import cryptography  # noqa: F401
+
+    _ED25519 = True
+except ImportError:
+    _ED25519 = False
+
+requires_ed25519 = pytest.mark.skipif(
+    not _ED25519, reason="`cryptography` not installed (uv sync --extra signing)"
+)
+
+
+@requires_ed25519
+def test_key_gen_writes_private_pem_mode_0600_and_prints_public(tmp_path: Path):
+    priv = tmp_path / "priv.pem"
+    rc, out = _run("key", "gen", "--out", str(priv))
+    assert rc == 0
+    assert priv.exists()
+    assert (priv.stat().st_mode & 0o777) == 0o600
+    assert "BEGIN PUBLIC KEY" in out
+
+
+@requires_ed25519
+def test_key_gen_refuses_to_overwrite_without_force(tmp_path: Path):
+    priv = tmp_path / "priv.pem"
+    priv.write_text("placeholder")
+    rc, _ = _run("key", "gen", "--out", str(priv))
+    assert rc != 0
+    # File untouched
+    assert priv.read_text() == "placeholder"
+
+
+@requires_ed25519
+def test_key_gen_overwrites_with_force(tmp_path: Path):
+    priv = tmp_path / "priv.pem"
+    priv.write_text("placeholder")
+    rc, _ = _run("key", "gen", "--out", str(priv), "--force")
+    assert rc == 0
+    assert "BEGIN" in priv.read_text()
+
+
+@requires_ed25519
+def test_key_pub_round_trips_public_from_private(tmp_path: Path):
+    priv = tmp_path / "priv.pem"
+    rc1, gen_out = _run("key", "gen", "--out", str(priv))
+    assert rc1 == 0
+    rc2, pub_out = _run("key", "pub", "--in", str(priv))
+    assert rc2 == 0
+    # The public key from `key pub` must match the one `key gen` printed.
+    assert pub_out.strip() == gen_out.strip()
+
+
+@requires_ed25519
+def test_verify_pub_happy_path(tmp_path: Path):
+    """Group 6 — `tripwire verify --pub` round-trips an Ed25519 badge."""
+    from tripwire.signing.ed25519_backend import Ed25519Backend
+
+    backend = Ed25519Backend.generate()
+    pub_path = tmp_path / "pub.pem"
+    pub_path.write_bytes(backend.public_key_pem())
+
+    # Mint a badge via the engine using the Ed25519 backend.
+    eng = TripwireEngine(signing_backend=backend)
+    eng.approve(_clean_tool(), issued_at="2026-01-01T00:00:00+00:00")
+    badge = eng.badge_for("get_weather")
+    badge_path = tmp_path / "badge.json"
+    badge_path.write_text(json.dumps(badge))
+
+    rc, out = _run("verify", str(badge_path), "--pub", str(pub_path), env={"NO_COLOR": "1"})
+    assert rc == EXIT_BADGE_VALID == 0
+    assert "VALID" in out
+
+
+@requires_ed25519
+def test_verify_pub_wrong_key_returns_tampered(tmp_path: Path):
+    """Wrong public key → TAMPERED (exit 2)."""
+    from tripwire.signing.ed25519_backend import Ed25519Backend
+
+    signer = Ed25519Backend.generate()
+    other = Ed25519Backend.generate()
+    wrong_pub = tmp_path / "wrong_pub.pem"
+    wrong_pub.write_bytes(other.public_key_pem())
+
+    eng = TripwireEngine(signing_backend=signer)
+    eng.approve(_clean_tool(), issued_at="2026-01-01T00:00:00+00:00")
+    badge = eng.badge_for("get_weather")
+    badge_path = tmp_path / "badge.json"
+    badge_path.write_text(json.dumps(badge))
+
+    rc, out = _run("verify", str(badge_path), "--pub", str(wrong_pub), env={"NO_COLOR": "1"})
+    assert rc == EXIT_BADGE_TAMPERED == 2
+    assert "TAMPER" in out.upper()
+
+
+@requires_ed25519
+def test_verify_pub_missing_file_returns_invalid(tmp_path: Path):
+    """Missing --pub file → INVALID (exit 3), not a crash."""
+    badge_path = tmp_path / "badge.json"
+    badge_path.write_text(json.dumps({"tool": "t", "fingerprint": "f", "sig": "x"}))
+    rc, out = _run(
+        "verify", str(badge_path), "--pub", str(tmp_path / "nope.pem"), env={"NO_COLOR": "1"}
+    )
+    assert rc == EXIT_BADGE_INVALID == 3
+    assert "cannot read" in out

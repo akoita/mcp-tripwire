@@ -11,7 +11,7 @@ Built for the Kaggle **AI Agents Intensive Vibe Coding Capstone** (Freestyle tra
 |---|---|
 | Attack corpus blocked | **9 / 9** (`make eval`) |
 | False positives on clean tools | **0 / 4** |
-| Tests (unit + integration) | **58** (4 ADK/HTTP-gated tests skip without `[agent]`) |
+| Tests (unit + integration) | **69** (27 extras-gated tests skip without `[agent]` / `[signing]`; **109** with both extras installed) |
 | Deterministic core dependencies | **stdlib only** (verified by `scripts/harness_guardrails.py`) |
 | Demos (each its own `make` target) | `demo` · `demo-proxy` · `demo-adk` |
 
@@ -28,7 +28,7 @@ Static scanners catch the first at vetting time but can't see the second. Runtim
 
 ## The wedge
 
-Tripwire does **both**, and emits **verifiable trust evidence**: every approved tool gets a fingerprint and a signed attestation (HMAC-SHA256, swappable for Ed25519). If the tool drifts after approval, the next call is **quarantined**. If the badge payload is tampered with, verification fails — independently, without contacting Tripwire.
+Tripwire does **both**, and emits **verifiable trust evidence**: every approved tool gets a fingerprint and a signed attestation (HMAC-SHA256 by default, or Ed25519 via the `[signing]` extra). If the tool drifts after approval, the next call is **quarantined**. If the badge payload is tampered with, verification fails — independently, without contacting Tripwire.
 
 ```
 scan → approve / reject → fingerprint → monitor drift → quarantine rug-pull
@@ -83,13 +83,13 @@ Implementation status:
 | Local Docker deploy (verified end-to-end) | ✅ implemented | [`Dockerfile`](Dockerfile) + smoke in [`docs/runbooks/deploy.md`](docs/runbooks/deploy.md) |
 | Cloud Run deploy via `agents-cli deploy` | 🟢 staged | configured in [`agents-cli-manifest.yaml`](agents-cli-manifest.yaml); deploy steps + rollback in [`docs/runbooks/deploy.md`](docs/runbooks/deploy.md) — requires GCP creds, not yet pushed |
 | Stdio MCP gateway over HTTP/SSE (proxy bridge in the cloud) | 📝 design-locked | [RFC-0004](docs/rfc/RFC-0004-http-sse-proxy-transport.md) (review-requested), implementation pending [#33](https://github.com/akoita/mcp-tripwire/issues/33) |
-| Signing scheme: HMAC-SHA256 → Ed25519 | 📝 design-locked | [RFC-0002](docs/rfc/RFC-0002-ed25519-signing.md) accepted, implementation pending [#31](https://github.com/akoita/mcp-tripwire/issues/31) |
+| Signing scheme: HMAC-SHA256 → Ed25519 | ✅ implemented | [RFC-0002](docs/rfc/RFC-0002-ed25519-signing.md) implemented in [#31](https://github.com/akoita/mcp-tripwire/issues/31); `tripwire key gen` / `verify --pub` + alg-dispatching `/verify` endpoint. Install `[signing]` extra for Ed25519. |
 
 ## Quickstart
 
 ```bash
 # One-time bootstrap (uv ≥ 0.5; installs ruff + pytest)
-make check                 # lint + 58 tests + harness guardrails (hard rules #2/#3/#4/#9)
+make check                 # lint + 69 tests + harness guardrails (hard rules #2/#3/#4/#9)
 
 # The three demos — each a different face of the same trust loop
 make demo                  # engine-level: approve / evaluate_call / verify_badge (no transport)
@@ -128,7 +128,7 @@ The LLM is the **explainer and router**; the **verdict** always comes from the d
 | **Agent skills (`.agents/skills/`)** | three skills: `scanning_mcp_servers`, `triaging_owasp_mcp_findings`, `issuing_mcp_trust_badge` |
 | **Agents CLI** | project scaffolded with `agents-cli scaffold enhance .`; spec in [.agents-cli-spec.md](.agents-cli-spec.md); manifest in [agents-cli-manifest.yaml](agents-cli-manifest.yaml) |
 | **Multi-agent (ADK)** | Scanner / Red-team / Attestor + coordinator in [`src/tripwire/agents/`](src/tripwire/agents/) and [`app/agent.py`](app/agent.py); Attestor uses `FunctionTool(require_confirmation=True)` for HITL badge minting |
-| **Two-layer eval** | deterministic `pytest` (58 tests) + non-deterministic `agents-cli eval` datasets in [`tests/eval/datasets/`](tests/eval/datasets/) |
+| **Two-layer eval** | deterministic `pytest` (69 tests, 109 with all extras) + non-deterministic `agents-cli eval` datasets in [`tests/eval/datasets/`](tests/eval/datasets/) |
 | **Deployability** | [`Dockerfile`](Dockerfile), [`app/fast_api_app.py`](app/fast_api_app.py), Cloud Run target in [agents-cli-manifest.yaml](agents-cli-manifest.yaml) |
 | **Quality gates** | pre-commit (`ruff`, secret detection, [`no_commit_to_main.sh`](scripts/no_commit_to_main.sh)) + GitHub Actions (`ci`, `security`, `ai-review` under [.github/workflows/](.github/workflows/)) |
 
@@ -152,7 +152,7 @@ MCP security is **not** greenfield. Static scanners (e.g. [Invariant `mcp-scan`]
 Tripwire's contribution is the narrower, sharper wedge:
 
 - **Continuous schema integrity** — the same fingerprint enforced at approval is re-checked on every call AND on every re-list, so post-approval mutation can't slip through whether the agent sees it at call time or via a fresh `tools/list`.
-- **Portable, independently-verifiable attestations** — every approved tool carries a signed badge whose payload is HMAC-signed; verification needs the public key and nothing else (no callback to Tripwire required).
+- **Portable, independently-verifiable attestations** — every approved tool carries a signed badge. With the `[signing]` extra (Ed25519), verification needs only the public key — no shared secret, no callback to Tripwire. HMAC is the default for zero-deps demos.
 - **Mapped to OWASP MCP Top 10** so findings travel cleanly into existing AppSec workflows.
 
 ## License
