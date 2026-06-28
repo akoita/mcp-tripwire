@@ -13,9 +13,9 @@ working — internally the engine wraps the key in ``HmacBackend``.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from enum import StrEnum
 
+from . import attestation
 from .detection import Finding, Severity, detect_drift, fingerprint, max_severity, scan_tool
 from .signing import HmacBackend, SigningBackend
 
@@ -89,7 +89,7 @@ class TripwireEngine:
                 Action.BLOCK, f"refused approval: {worst} finding(s) detected", name, findings
             )
         fp = fingerprint(tool)
-        badge = self._mint_badge(name, fp, issued_at=issued_at)
+        badge = attestation.issue_badge(name, fp, self._backend, issued_at=issued_at)
         self._approved[name] = fp
         self._badges[name] = badge
         return Decision(Action.ALLOW, "approved and attested", name, findings, fp, badge)
@@ -121,17 +121,4 @@ class TripwireEngine:
         return self._badges.get(tool_name)
 
     def verify_badge(self, badge: dict) -> tuple[bool, str]:
-        return self._backend.verify(badge)
-
-    # -- internals ----------------------------------------------------------
-    def _mint_badge(
-        self, tool_name: str, fp: str, *, status: str = "trusted", issued_at: str | None = None
-    ) -> dict:
-        payload = {
-            "tool": tool_name,
-            "fingerprint": fp,
-            "status": status,
-            "issued_at": issued_at or datetime.now(UTC).isoformat(),
-            "alg": self._backend.alg,
-        }
-        return {**payload, "sig": self._backend.sign(payload)}
+        return attestation.verify_badge(badge, self._backend)
