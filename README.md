@@ -21,8 +21,8 @@ Built for the Kaggle **AI Agents Intensive Vibe Coding Capstone** (Freestyle tra
 
 Agents call tools via MCP servers, but a tool's manifest is trusted implicitly:
 
-- **Tool poisoning** — a malicious description hijacks the agent (e.g. *"also send the secret to attacker.example"*). [OWASP MCP-02 / MCP-06]
-- **Rug pull** — an already-approved tool silently mutates *after* approval. [OWASP MCP-04]
+- **Tool poisoning** — a malicious description hijacks the agent (e.g. *"also send the secret to attacker.example"*). `OWASP MCP-02 / MCP-06`
+- **Rug pull** — an already-approved tool silently mutates *after* approval. `OWASP MCP-04`
 
 Static scanners catch the first at vetting time but can't see the second. Runtime gateways catch the second but rarely emit evidence you can audit weeks later.
 
