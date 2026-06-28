@@ -8,7 +8,7 @@
 A lightweight OSS **trust gateway for MCP tools**: continuous schema-integrity enforcement
 plus portable, cryptographically signed attestations. We answer the question others don't:
 *"Can this agent keep trusting this tool during execution — and can we prove it?"*
-Product spec → [SPEC.md](SPEC.md). Plan → [ROADMAP.md](ROADMAP.md). Methodology → [docs/AGENTIC_SDLC.md](docs/AGENTIC_SDLC.md).
+Product spec → [docs/SPEC.md](docs/SPEC.md). Plan → [docs/ROADMAP.md](docs/ROADMAP.md). Methodology → [docs/AGENTIC_SDLC.md](docs/AGENTIC_SDLC.md).
 
 ## Stack
 - **Language:** Python ≥3.12, managed by **`uv`** (never pip/poetry directly).
@@ -40,7 +40,7 @@ Product spec → [SPEC.md](SPEC.md). Plan → [ROADMAP.md](ROADMAP.md). Methodol
 |---|---|
 | Instructions | this `AGENTS.md` (always loaded) |
 | Knowledge | `docs/` (ADRs, RFCs, architecture, runbooks) |
-| Memory | `STATUS.md`, `ROADMAP.md`, `BACKLOG.md`, `TECH_DEBT.md` |
+| Memory | `docs/STATUS.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md`, `docs/TECH_DEBT.md` |
 | Examples | `examples/`, `tests/eval/datasets/` |
 | Tools | MCP server (`src/tripwire/proxy.py`, `cli.py`), `.agents/skills/` |
 | Guardrails | `scripts/harness_guardrails.py`, `.claude/settings.json`, `security` policy |
@@ -50,6 +50,7 @@ Product spec → [SPEC.md](SPEC.md). Plan → [ROADMAP.md](ROADMAP.md). Methodol
 - Skills: `.agents/skills/<snake_case>/SKILL.md` (name field = kebab-case gerund). `.claude/skills` + `.gemini/commands` adapt the same files.
 - Docstrings + type hints on all public functions. Comments explain *why*, not *what*.
 - Findings map to the **OWASP MCP Top 10** taxonomy (`src/tripwire/owasp.py`).
+- **Repo root stays uncluttered.** Working memory (`STATUS.md`, `ROADMAP.md`, `BACKLOG.md`, `TECH_DEBT.md`, `SPEC.md`, `SUBMISSION_CHECKLIST.md`) lives under `docs/`. Only files with a tooling/ecosystem reason live at the root — the explicit allowlist is `ROOT_FILE_ALLOWLIST` in [`scripts/harness_guardrails.py`](scripts/harness_guardrails.py), enforced by `make check`. Adding a new root file means appending to the allowlist with a one-line justification (or finding the right subdir for it).
 
 ## When the agent makes a mistake
 Fix the **harness**, not just the symptom: add a rule here (and an ADR if structural), or encode

@@ -123,7 +123,7 @@ the same way it talks to a local proxy. That requires:
 3. A way to declare the upstream MCP server (or set thereof) the deployed
    gateway proxies for.
 
-Tracked in [STATUS.md](../../STATUS.md) under "Next". The current Cloud
+Tracked in [STATUS.md](../STATUS.md) under "Next". The current Cloud
 Run service is **policy-only**: callers POST individual tool descriptors
 and badges, and it returns verdicts. That is sufficient for centralised
 scanning / verification workflows.

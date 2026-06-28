@@ -13,4 +13,4 @@ Knowledge context for humans and agents (the "Knowledge" row of the context map 
 - **plans/** — per-epic delivery plans (from `_TEMPLATE.md`).
 - **runbooks/** — operational guides ([demo proof-moment](runbooks/demo-proof-moment.md)).
 
-State lives at the repo root: `STATUS.md`, `ROADMAP.md`, `BACKLOG.md`, `TECH_DEBT.md`.
+State lives alongside this index: [STATUS.md](STATUS.md), [ROADMAP.md](ROADMAP.md), [BACKLOG.md](BACKLOG.md), [TECH_DEBT.md](TECH_DEBT.md), [SPEC.md](SPEC.md), [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md). Only the working-memory docs and tooling-required files (README, LICENSE, AGENTS.md, etc.) live at the repo root — see the `check_root_clean()` allowlist in [`scripts/harness_guardrails.py`](../scripts/harness_guardrails.py).
