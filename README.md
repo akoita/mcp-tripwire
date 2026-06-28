@@ -82,7 +82,7 @@ Implementation status:
 | SARIF 2.1.0 output for `scan` + `ci` | ✅ implemented | [`src/tripwire/sarif.py`](src/tripwire/sarif.py) — `tripwire scan --sarif` · `tripwire ci --sarif` · GH Code Scanning runbook in [`docs/runbooks/sarif-in-gh-actions.md`](docs/runbooks/sarif-in-gh-actions.md) |
 | Local Docker deploy (verified end-to-end) | ✅ implemented | [`Dockerfile`](Dockerfile) + smoke in [`docs/runbooks/deploy.md`](docs/runbooks/deploy.md) |
 | Cloud Run deploy via `agents-cli deploy` | 🟢 staged | configured in [`agents-cli-manifest.yaml`](agents-cli-manifest.yaml); deploy steps + rollback in [`docs/runbooks/deploy.md`](docs/runbooks/deploy.md) — requires GCP creds, not yet pushed |
-| Stdio MCP gateway over HTTP/SSE (proxy bridge in the cloud) | 📝 design-locked | [RFC-0004](docs/rfc/RFC-0004-http-sse-proxy-transport.md) (review-requested), implementation pending [#33](https://github.com/akoita/mcp-tripwire/issues/33) |
+| Stdio MCP gateway over HTTP/SSE (proxy bridge in the cloud) | ✅ implemented | [RFC-0004](docs/rfc/RFC-0004-http-sse-proxy-transport.md) implemented in [#33](https://github.com/akoita/mcp-tripwire/issues/33); `SseTripwireProxy` + `/mcp/sse/{events,messages}` mount + `make demo-proxy-sse`. |
 | Signing scheme: HMAC-SHA256 → Ed25519 | ✅ implemented | [RFC-0002](docs/rfc/RFC-0002-ed25519-signing.md) implemented in [#31](https://github.com/akoita/mcp-tripwire/issues/31); `tripwire key gen` / `verify --pub` + alg-dispatching `/verify` endpoint. Install `[signing]` extra for Ed25519. |
 
 ## Quickstart

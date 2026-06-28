@@ -2,7 +2,7 @@
 
 _Working memory. Update at the end of each session._
 
-**Now (v0.2 in flight):** SARIF (#32) + Ed25519 over HMAC (#31) landed; RFC-0004 (#33 HTTP/SSE) accepted, implementation next. 109 tests pass with all extras (`make check` reports 69/27 in dev-only).
+**Now (v0.2 substantively complete):** SARIF (#32) + Ed25519 (#31) + HTTP/SSE proxy (#33) all landed on main. v0.2.0 tag is reachable pending the operator-path proof (manual Code Scanning screenshot per `docs/runbooks/sarif-in-gh-actions.md`).
 
 _Older milestones:_ Day 3 — CLI polish (#6) + drift eval (#7); 32 tests at that tag. `make eval` still reports `9/9 attacks blocked · 0 false-positives on 4 clean tools`.
 
@@ -25,5 +25,5 @@ _Older milestones:_ Day 3 — CLI polish (#6) + drift eval (#7); 32 tests at tha
 ## Resolved
 - Signing scheme: HMAC now → Ed25519 — landed in [#31](https://github.com/akoita/mcp-tripwire/issues/31) per RFC-0002; HMAC remains the zero-deps default, Ed25519 ships behind `[signing]`.
 - SARIF 2.1.0 output — landed in [#32](https://github.com/akoita/mcp-tripwire/issues/32) per RFC-0003 (`tripwire scan/ci --sarif`).
-- RFC-0004 (HTTP/SSE proxy) — accepted 2026-06-28; implementation #33 unblocked.
+- RFC-0004 (HTTP/SSE proxy) — accepted 2026-06-28; implementation landed in [#33](https://github.com/akoita/mcp-tripwire/issues/33) (PR #46 slots 1-6 + follow-up slots 7-8: SseTripwireProxy, /mcp/sse mount, demo, end-to-end script test).
 - GitHub repo: published private at `akoita/mcp-tripwire` (2026-06-27).

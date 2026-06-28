@@ -1,6 +1,6 @@
 # HTTP/SSE proxy transport
 
-> **Status:** 🟡 partial — slots 1-6/9 implemented in [PR #46](https://github.com/akoita/mcp-tripwire/pull/46); slots 7-8 (demo + script test + README/STATUS flip) pending · **Owner:** akoita · **Indexed by:** [docs/features/README.md](README.md)
+> **Status:** ✅ implemented · **Owner:** akoita · **Indexed by:** [docs/features/README.md](README.md)
 > **Design:** [RFC-0004 (accepted)](../rfc/RFC-0004-http-sse-proxy-transport.md) · **Tracking:** [#33](https://github.com/akoita/mcp-tripwire/issues/33)
 
 ## Value (what this gives the agent / operator)
@@ -33,7 +33,7 @@
 - `tests/integration/test_proxy_sse_bridge.py` — 2 cases (test plan group 3). tools/list strips poisoned + attaches badge; tools/call short-circuits drift with `-32001`. Same guard semantics as the stdio bridge, proved over the SSE adapter shape.
 - `tests/integration/test_http_sse_mount.py` — 4 cases (test plan group 7 — partial). /healthz independent of upstream env; /mcp/sse/* 503 when env unset; /messages 404 on unknown session.
 
-Pending verification (slot 7, deferred): `examples/demo_proxy_sse.py` + `tests/integration/test_demo_proxy_sse_script.py` — end-to-end SSE traffic through the gateway against the in-process `fake_sse_mcp_server` fixture.
+End-to-end verification: [`examples/demo_proxy_sse.py`](../../examples/demo_proxy_sse.py) + [`tests/integration/test_demo_proxy_sse_script.py`](../../tests/integration/test_demo_proxy_sse_script.py) — drives the three-act proof (poisoning stripped, rug-pull quarantined, `-32001` short-circuit) over HTTP+SSE against the in-process `fake_sse_mcp_server` fixture. Run with `make demo-proxy-sse`.
 
 ## Guarantees and limitations
 
