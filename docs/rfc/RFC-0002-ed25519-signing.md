@@ -1,6 +1,6 @@
 # RFC-0002 — Ed25519 over HMAC for trust badges
 
-**Status:** **draft — REVIEW REQUESTED (v2 after Codex review)**
+**Status:** **accepted (v3 — Codex review folded in, sign-off received 2026-06-28)**
 **Author:** Aboubakar Koita (with Claude)
 **Issue:** [#31](https://github.com/akoita/mcp-tripwire/issues/31)
 **Relates to:** [ADR-0001 trust gateway](../adr/ADR-0001-mcp-trust-gateway.md), [ADR-0003 signed attestations](../adr/ADR-0003-signed-attestations.md), [`src/tripwire/attestation.py`](../../src/tripwire/attestation.py)
@@ -115,28 +115,39 @@ class SigningBackend(Protocol):
 
 `HmacBackend(key: bytes)` and `Ed25519Backend(private_key_pem: bytes | None, public_key_pem: bytes | None)` both satisfy it. The Ed25519 backend can be constructed verify-only (private key absent).
 
-### Configuration — ONE resolver, not multiple
+### Configuration — ONE resolver, asymmetric by role
 
-> **This was a contradiction in v1 of the RFC** — engine reading env vs CLI/HTTP reading env. Resolved here in favour of a single resolver. The engine itself stays env-free.
+> **v1 contradiction (engine reading env vs CLI/HTTP reading env): resolved.** Engine stays env-free. v2 clarification (Codex 2026-06-28): the `verify` role returns a **registry** so a single process can verify a mixed stream of HMAC + Ed25519 badges in flight during the migration window. The `sign` role still returns one backend — signing has one configured choice per process.
 
 ```python
 # src/tripwire/signing/__init__.py
-def resolve_backend(*, role: Literal["sign", "verify"]) -> SigningBackend:
-    """One-stop config resolver. Read env once at process startup, return the
-    right backend, fail loudly if config is incoherent.
+def resolve_signing_backend() -> SigningBackend:
+    """Pick the ONE backend this process will sign with. Read env at startup.
 
-    Priority for picking the alg:
-      1. If TRIPWIRE_PRIVATE_KEY_PATH (sign role) or TRIPWIRE_PUBLIC_KEY_PATH
-         (verify role) is set, return an Ed25519Backend.
-      2. Else if TRIPWIRE_SIGNING_KEY is set, return HmacBackend.
-      3. Else, if TRIPWIRE_ALLOW_DEV_KEY=1 is set, return HmacBackend with a
-         loud-named dev placeholder ("DEV-KEY-DO-NOT-USE-IN-PROD").
-      4. Else, raise SigningConfigError with a one-paragraph fix-this message.
+    Priority:
+      1. TRIPWIRE_PRIVATE_KEY_PATH set → Ed25519Backend(private_key_pem=...).
+      2. TRIPWIRE_SIGNING_KEY set      → HmacBackend(key=...).
+      3. TRIPWIRE_ALLOW_DEV_KEY=1      → HmacBackend(dev placeholder, named
+                                          "DEV-KEY-DO-NOT-USE-IN-PROD").
+      4. else                           → raise SigningConfigError with a
+                                          one-paragraph fix-this message.
+    """
 
-    Tests + demos set TRIPWIRE_ALLOW_DEV_KEY=1 explicitly (one line in the
-    Makefile demo targets). Production never sets it.
+def resolve_verify_registry() -> VerifyRegistry:
+    """Return a registry that knows how to verify EVERY alg the process can
+    encounter — both HMAC and Ed25519 if the relevant env is set. The registry
+    dispatches per badge by inspecting `badge["alg"]`.
+
+    A process verifying only Ed25519 badges sets TRIPWIRE_PUBLIC_KEY_PATH;
+    one still verifying legacy HMAC badges also sets TRIPWIRE_SIGNING_KEY; the
+    registry uses whichever the badge needs. If a badge asks for an alg whose
+    key the registry doesn't have, verify returns
+    (False, "no verifier registered for alg=<alg>; configure
+    TRIPWIRE_PUBLIC_KEY_PATH or TRIPWIRE_SIGNING_KEY").
     """
 ```
+
+`VerifyRegistry` is a thin map `alg → SigningBackend` populated from whichever env vars are set. `attestation.verify_badge(badge, registry)` looks up `registry[badge["alg"]]` and delegates. This is the dispatch shape RFC v1 implied but didn't quite spell out; v2 makes it explicit.
 
 The `TripwireEngine` constructor changes:
 
@@ -220,14 +231,16 @@ Exit codes from `tripwire verify` are unchanged (0 valid, 2 tampered, 3 invalid/
 
 Acceptance criterion for the implementation PR: every existing test in the suite keeps passing AND the 10 new test groups above all pass AND the SSOT updates from §Rule update land in the same commit set.
 
-## Open questions for the reviewer (Codex review folded in)
+## Decisions (Codex sign-off, 2026-06-28)
 
-1. **PEM vs raw?** Recommend PEM for `openssl pkey` compatibility.
-2. **`tripwire key gen/pub` subcommand grouping?** Recommend the grouped form.
-3. **`[signing]` extra vs folded into `[agent]`?** Recommend separate.
-4. **Rule #2 widening vs sibling distribution?** Recommend widening with atomic SSOT updates (see §Rule update). The alternative (`tripwire-signing` as a separate wheel) is documented; reviewer picks.
-5. ~~**Default backend selection rule.**~~ **Resolved** in §Configuration via the single `resolve_backend()` priority.
-6. ~~**Drop the dev placeholder?**~~ **Resolved** in §"What about the dev placeholder?" — yes, with `TRIPWIRE_ALLOW_DEV_KEY=1` opt-in.
+| # | Decision | Rationale |
+|---|---|---|
+| 1 | **PEM keys** (not raw) | Operator ergonomics; `openssl pkey -text` reads it. |
+| 2 | `tripwire key gen` / `tripwire key pub` (grouped) | Room for future `key rotate`, `key fingerprint`. |
+| 3 | Separate `[signing]` extra (not folded into `[agent]`) | HTTP-only / security-pipeline users shouldn't have to install ADK just to verify a signature. |
+| 4 | **Widen Hard Rule #2** with atomic SSOT updates (not a sibling wheel) | A separate `tripwire-signing` wheel is packaging ceremony before the project has enough users to justify it. The atomic-update list in §Rule update keeps the rule and the code honest at every step. |
+| 5 | ~~Default backend selection~~ → resolved | See §Configuration. `resolve_signing_backend()` priority is HMAC- / Ed25519-aware; `resolve_verify_registry()` returns a per-alg dispatch table. |
+| 6 | ~~Dev placeholder~~ → resolved | See §"What about the dev placeholder?" — refused by default; `TRIPWIRE_ALLOW_DEV_KEY=1` opts in; production fails fast on a forgotten key. |
 
 ## Day-N implementation plan (post-RFC merge)
 
