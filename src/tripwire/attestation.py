@@ -1,33 +1,34 @@
 """Portable, verifiable trust attestations — the project's wedge.
 
 Competitors emit a *report you must trust*. Tripwire emits a *signed attestation that
-travels with the tool and breaks on tamper*. v1 uses HMAC-SHA256 (deterministic, zero
-deps); P1 upgrades to Ed25519/sigstore-style asymmetric signing — see
-ADR-0003. The wire format is identical, so the upgrade is drop-in.
+travels with the tool and breaks on tamper*. v1 inlined HMAC-SHA256 here; as of
+RFC-0002 (#31) the algorithm lives in pluggable backends under
+``src/tripwire/signing/``. This module keeps its public surface — ``sign /
+issue_badge / verify_badge`` — so every existing caller works unchanged. Under
+the hood the work is delegated to the appropriate backend.
+
+The HMAC backend is stdlib-only and safe to eager-import. The Ed25519 backend
+(landing in slot 3 of #31) pulls ``cryptography`` and must be lazy-imported —
+enforced by ``scripts/harness_guardrails.py::check_pluggable_backends_lazy_imported``.
 """
 
 from __future__ import annotations
 
-import hashlib
-import hmac
-import json
 from datetime import UTC, datetime
 
-ALG = "HMAC-SHA256"
+from .signing import HmacBackend
+from .signing.hmac_backend import ALG
+
+__all__ = ["ALG", "sign", "issue_badge", "verify_badge"]
 
 
-def _canonical(payload: dict) -> bytes:
-    """Deterministic byte encoding of the badge payload (signature excluded)."""
-    return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
-
-
-def _key_bytes(key: str | bytes) -> bytes:
-    return key.encode() if isinstance(key, str) else key
+def _hmac_backend(key: str | bytes) -> HmacBackend:
+    return HmacBackend(key)
 
 
 def sign(payload: dict, key: str | bytes) -> str:
-    """Return the hex HMAC-SHA256 of the canonical payload."""
-    return hmac.new(_key_bytes(key), _canonical(payload), hashlib.sha256).hexdigest()
+    """Hex HMAC-SHA256 of the canonical payload. Kept for back-compat."""
+    return _hmac_backend(key).sign(payload)
 
 
 def issue_badge(
@@ -40,24 +41,19 @@ def issue_badge(
 ) -> dict:
     """Mint a signed trust badge binding a tool name to its approved fingerprint.
 
-    `issued_at` is injectable for deterministic tests; defaults to UTC now.
+    ``issued_at`` is injectable for deterministic tests; defaults to UTC now.
     """
+    backend = _hmac_backend(key)
     payload = {
         "tool": tool_name,
         "fingerprint": fingerprint,
         "status": status,
         "issued_at": issued_at or datetime.now(UTC).isoformat(),
-        "alg": ALG,
+        "alg": backend.alg,
     }
-    return {**payload, "sig": sign(payload, key)}
+    return {**payload, "sig": backend.sign(payload)}
 
 
 def verify_badge(badge: dict, key: str | bytes) -> tuple[bool, str]:
     """Verify a badge. Returns (is_valid, reason). Any tamper -> (False, why)."""
-    if "sig" not in badge:
-        return False, "missing signature"
-    payload = {k: v for k, v in badge.items() if k != "sig"}
-    expected = sign(payload, key)
-    if not hmac.compare_digest(expected, str(badge["sig"])):  # constant-time
-        return False, "signature mismatch — badge or payload was tampered with"
-    return True, "valid"
+    return _hmac_backend(key).verify(badge)

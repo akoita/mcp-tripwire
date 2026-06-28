@@ -185,6 +185,13 @@ def check_features_catalog_consistent() -> None:
         )
 
 
+# Curated list of backend module names that pull a third-party import (e.g.
+# `cryptography`). Eager-importing any of these at module scope in
+# `attestation.py` would crash a base install without the relevant extra.
+# The HMAC backend is stdlib-only and is NOT on this list.
+_EXTRAS_GATED_BACKENDS = {"ed25519_backend"}
+
+
 # Rule #2 corollary: backends in agents/ and signing/ are pluggable adapters gated by
 # extras (`[agent]` / `[signing]`). The engine must NEVER eagerly import them at
 # module level — a base install with neither extra would crash on `import tripwire`.
@@ -195,22 +202,34 @@ def check_pluggable_backends_lazy_imported() -> None:
     if not target.exists():
         return  # engine moved/renamed; bigger problem than this check
     tree = ast.parse(target.read_text(encoding="utf-8"), filename=str(target))
+
+    def _touches_lazy(dotted: str) -> bool:
+        return any(part in _EXTRAS_GATED_BACKENDS for part in dotted.split("."))
+
     for node in tree.body:  # module-level only — function-body imports are fine
-        mod = None
+        offending: str | None = None
         if isinstance(node, ast.ImportFrom):
-            if node.level >= 1 and (node.module or "").split(".")[0] in {"signing"}:
-                mod = f".{node.module}"
-            elif node.level == 0 and (node.module or "").startswith("tripwire.signing"):
-                mod = node.module
+            module = node.module or ""
+            if _touches_lazy(module):
+                offending = ("." * node.level) + module
+            else:
+                # e.g. `from .signing import ed25519_backend`
+                for alias in node.names:
+                    if alias.name in _EXTRAS_GATED_BACKENDS:
+                        prefix = ("." * node.level) + (module + "." if module else "")
+                        offending = prefix + alias.name
+                        break
         elif isinstance(node, ast.Import):
             for alias in node.names:
-                if alias.name.startswith("tripwire.signing"):
-                    mod = alias.name
-        if mod:
+                if _touches_lazy(alias.name):
+                    offending = alias.name
+                    break
+        if offending:
             fail(
-                f"[#2-lazy] attestation.py eagerly imports '{mod}' at module scope. "
-                f"Move it inside the function that uses it — a base install without the "
-                f"`[signing]` extra must still `import tripwire` cleanly."
+                f"[#2-lazy] attestation.py eagerly imports '{offending}' at module "
+                f"scope. Move it inside the function body — a base install without "
+                f"the relevant extra (e.g. `[signing]`) must still `import tripwire` "
+                f"cleanly."
             )
 
 
