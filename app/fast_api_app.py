@@ -12,7 +12,7 @@ Endpoints:
 
 The stdio MCP gateway (transparent bridge for an MCP client to talk through
 a deployed Tripwire instance) is a separate, larger surface — tracked in
-[STATUS.md](../STATUS.md) and not in scope for this PR.
+[STATUS.md](../docs/STATUS.md) and not in scope for this PR.
 """
 
 from __future__ import annotations

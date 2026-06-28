@@ -82,7 +82,7 @@ Implementation status:
 | Local Docker deploy (verified end-to-end) | ✅ implemented | [`Dockerfile`](Dockerfile) + smoke in [`docs/runbooks/deploy.md`](docs/runbooks/deploy.md) |
 | Cloud Run deploy via `agents-cli deploy` | 🟢 staged | configured in [`agents-cli-manifest.yaml`](agents-cli-manifest.yaml); deploy steps + rollback in [`docs/runbooks/deploy.md`](docs/runbooks/deploy.md) — requires GCP creds, not yet pushed |
 | Stdio MCP gateway over HTTP/SSE (proxy bridge in the cloud) | 🟡 planned | future surface; the current Cloud Run service is policy-only (scan / verify / eval), not a transparent MCP bridge |
-| Signing scheme: HMAC-SHA256 → Ed25519 | 🟡 planned | tracked in [STATUS.md](STATUS.md) |
+| Signing scheme: HMAC-SHA256 → Ed25519 | 🟡 planned | tracked in [docs/STATUS.md](docs/STATUS.md) |
 
 ## Quickstart
 

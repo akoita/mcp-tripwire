@@ -18,7 +18,7 @@ These ran end-to-end against this branch's commit on a clean `/tmp` clone. If an
 
 ## Link integrity
 
-- [x] All inline relative links in `README.md`, `docs/writeup.md`, `docs/runbooks/deploy.md`, `docs/video-script.md`, `.agents-cli-spec.md`, `AGENTS.md`, `STATUS.md` resolve to existing files (verified by walk-and-stat script).
+- [x] All inline relative links in `README.md`, `docs/writeup.md`, `docs/runbooks/deploy.md`, `docs/video-script.md`, `.agents-cli-spec.md`, `AGENTS.md`, `docs/STATUS.md` resolve to existing files (verified by walk-and-stat script).
 - [x] Literal taxonomy tags (e.g. `OWASP MCP-04`) use backticks, not markdown brackets — won't render as broken refs.
 - [ ] After flipping the repo to public for judging: re-verify all `https://github.com/akoita/mcp-tripwire/...` URLs in writeup + runbook return 200, not 404.
 

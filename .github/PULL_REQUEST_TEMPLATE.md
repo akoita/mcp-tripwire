@@ -8,7 +8,7 @@
 - [ ] No secrets/keys; demos use canary + fake sink only (Rules #3, #4)
 - [ ] Stubs self-flagged (`# STUB(Exx):`) — no silent partials (Rule #9)
 - [ ] ADR added if a structural decision was made
-- [ ] `STATUS.md` / `CHANGELOG.md` updated
+- [ ] `docs/STATUS.md` / `CHANGELOG.md` updated
 
 ## Threat / residual risk
 <!-- OWASP MCP categories touched; what remains unmitigated. -->
