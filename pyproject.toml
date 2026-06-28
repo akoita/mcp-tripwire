@@ -21,7 +21,9 @@ dependencies = []
 agent = [
   "fastapi>=0.111.0",
   "google-adk>=0.5.0",
+  "httpx-sse>=0.4.0",
   "mcp>=1.2.0",
+  "sse-starlette>=2.1.0",
   "uvicorn[standard]>=0.30.0",
 ]
 # `jsonschema` is for SARIF-output schema validation in tests/integration/
@@ -56,4 +58,4 @@ ignore = ["S101"]  # asserts are fine in tests
 [tool.pytest.ini_options]
 testpaths = ["tests/unit", "tests/integration"]
 addopts = "-q"
-pythonpath = ["src"]
+pythonpath = ["src", "."]  # `.` so `from app.fast_api_app import app` works without PYTHONPATH override (Codex round 2 caveat).

@@ -41,6 +41,13 @@ class StdioTripwireProxy:
         # re-fingerprint against.
         self._live_tools: dict[str, dict] = {}
 
+    def invalidate_cache(self) -> None:
+        """Clear the live-tools cache. Called by SseServerStream on every upstream
+        drop so the post-reconnect tools/list rebuilds confidence in current
+        advertisements (RFC-0004 §Reconnect / Decision #8). Safe to call any
+        time; the next tools/list response will rebuild the cache wholesale."""
+        self._live_tools = {}
+
     # ------------------------------------------------------------------
     # Guard methods (transport-agnostic; covered by unit + integration tests)
 
@@ -122,6 +129,9 @@ class StdioTripwireProxy:
         """
         # Pair request ids to methods so the s->c pump knows which response
         # to rewrite (only tools/list responses need result.tools mangling).
+        # Keyed by NORMALIZED id (str|None). Codex P1 round 2: an untrusted
+        # upstream could reply with `id: "1"` to a `id: 1` request and bypass
+        # the tools/list rewrite branch if we matched by raw object equality.
         pending_methods: dict[object, str] = {}
 
         async def pump_client_to_server() -> None:
@@ -169,7 +179,7 @@ class StdioTripwireProxy:
                             _log(log, decision.action.value, decision.tool, decision.reason)
                             continue
                     if req_id is not None and method:
-                        pending_methods[req_id] = method
+                        pending_methods[_normalize_id(req_id)] = method
                     server_writer.write((json.dumps(msg) + "\n").encode())
                     await server_writer.drain()
             except (asyncio.CancelledError, ConnectionResetError, BrokenPipeError):
@@ -187,7 +197,11 @@ class StdioTripwireProxy:
                         await client_writer.drain()
                         continue
                     req_id = msg.get("id")
-                    method = pending_methods.pop(req_id, None) if req_id is not None else None
+                    method = (
+                        pending_methods.pop(_normalize_id(req_id), None)
+                        if req_id is not None
+                        else None
+                    )
                     if method == "tools/list" and isinstance(msg.get("result"), dict):
                         tools = msg["result"].get("tools") or []
                         # Refresh the cache with what the server actually sent
@@ -235,6 +249,16 @@ def _try_parse(raw: bytes) -> dict | None:
     return parsed if isinstance(parsed, dict) else None
 
 
+def _normalize_id(req_id: object) -> str | None:
+    """Canonicalize a JSON-RPC id for routing. Per spec ids are
+    string|number|null; an untrusted upstream replying with a different-typed
+    id (``"1"`` vs ``1``) MUST NOT route around the tools/list rewrite branch
+    or any other id-keyed dispatch. None remains None."""
+    if req_id is None:
+        return None
+    return str(req_id)
+
+
 def _send(writer: asyncio.StreamWriter, msg: dict) -> None:
     writer.write((json.dumps(msg) + "\n").encode())
 
@@ -252,3 +276,46 @@ def _log(stream: IO[str], action: str, tool: object, reason: str) -> None:
         json.dumps({"tripwire": {"action": action, "tool": tool, "reason": reason}}) + "\n"
     )
     stream.flush()
+
+
+# ---------------------------------------------------------------- SSE variant
+# RFC-0004 / #33. SseTripwireProxy is a thin subclass of StdioTripwireProxy
+# that drives the same `bridge()` pump with adapter streams instead of stdio
+# pipes. All guard logic + state lives in the parent — only the entry point
+# (and the implicit contract on stream-shaped objects) is new. The actual
+# SSE/HTTP transport work lives in `app/sse_adapter.py` (Decision #5).
+
+
+class SseTripwireProxy(StdioTripwireProxy):
+    """Policy enforcement over SSE/HTTP transport. Same guards as the stdio
+    variant; the only difference is the shape of the streams handed to
+    ``bridge()``.
+
+    Callers construct adapter streams (``SseClientStream`` for the inbound
+    client connection, ``SseServerStream`` for the upstream MCP server) in
+    ``app/sse_adapter.py`` and pass them in. Both must expose a ``reader``
+    that's an ``asyncio.StreamReader`` and a ``writer`` with the minimal
+    ``write / drain / close / is_closing`` shape the bridge uses.
+    """
+
+    async def bridge_sse(
+        self,
+        *,
+        client_stream,
+        server_stream,
+        log: IO[str] | None = None,
+    ) -> None:
+        """Drive the inherited ``bridge()`` over the adapter streams.
+
+        Both ``client_stream`` and ``server_stream`` are duck-typed to
+        ``app.sse_adapter.SseClientStream`` / ``SseServerStream``; the import
+        is NOT done here so this module stays free of any ``app`` /
+        ``httpx`` reference (Hard Rule #2).
+        """
+        await self.bridge(
+            client_reader=client_stream.reader,
+            client_writer=client_stream.writer,
+            server_reader=server_stream.reader,
+            server_writer=server_stream.writer,
+            log=log if log is not None else sys.stderr,
+        )
