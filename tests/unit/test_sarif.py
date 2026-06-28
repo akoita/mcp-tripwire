@@ -177,6 +177,32 @@ def test_to_sarif_output_validates_against_official_schema():
 # --- corpus enrichment (RFC-0003 prerequisite) ----------------------------
 
 
+def test_from_corpus_rows_raises_on_unknown_severity():
+    """Unknown severity strings are a producer bug — must raise rather than
+    silently downgrade to MEDIUM and mask a CRITICAL/HIGH finding."""
+    bogus_row = {
+        "id": "x1",
+        "category": "test",
+        "expected": "block",
+        "action": "block",
+        "ok": True,
+        "findings": [
+            {
+                "rule": "BOGUS",
+                "title": "bogus",
+                "severity": "catastrophic",  # not a real Severity name
+                "owasp": "MCP-01",
+                "evidence": "...",
+                "tool": "t",
+            }
+        ],
+        "source_uri": "urn:tripwire:corpus:x1",
+        "drift_from": None,
+    }
+    with pytest.raises(ValueError, match="unknown severity"):
+        from_corpus_rows([bogus_row])
+
+
 def test_corpus_rows_carry_findings_source_uri_drift_from():
     rows = run_corpus(load_corpus()).rows
     for row in rows:

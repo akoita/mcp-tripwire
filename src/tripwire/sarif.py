@@ -19,9 +19,9 @@ from .detection import Finding, Severity
 from .owasp import title as owasp_title
 
 SARIF_VERSION = "2.1.0"
-SARIF_SCHEMA_URL = (
-    "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json"
-)
+# Stable, canonical SARIF 2.1.0 schema URL. Avoid raw.githubusercontent.com/...master/...
+# because oasis-tcs may rename the default branch or move the schema file.
+SARIF_SCHEMA_URL = "https://json.schemastore.org/sarif-2.1.0.json"
 OWASP_MCP_HELP_URI = "https://owasp.org/www-project-mcp-top-10/"
 
 # Severity → SARIF level (RFC-0003 §Severity mapping).
@@ -110,9 +110,13 @@ def to_sarif(
 
     One combined `runs[]` entry per call (matches "one tool invocation = one
     run" SARIF guidance). `tool.driver.rules[]` is built from the *actually-
-    fired* rules across all inputs, deduplicated by `rule` id. Inputs with no
-    findings still appear (their case_id is preserved in the rule list via the
-    properties of any fired rule); a fully-clean run yields `rules: []` and
+    fired* rules across all inputs, deduplicated by `rule` id.
+
+    Clean inputs (empty `findings`) contribute nothing to `results[]` — SARIF
+    conventionally surfaces issues, not scan completions. Downstream readers
+    cannot distinguish "case ran and was clean" from "case never ran" from
+    the SARIF document alone; combine with `--json` / `CorpusResult.rows` if
+    that distinction matters. A fully-clean run yields `rules: []` and
     `results: []`.
     """
     inputs_list: list[SarifInput] = list(inputs)
@@ -190,7 +194,18 @@ _SEV_BY_STR: dict[str, Severity] = {str(s): s for s in Severity}
 
 
 def _severity_from_str(s: str) -> Severity:
-    return _SEV_BY_STR.get(s, Severity.MEDIUM)
+    """Parse the lowercase severity name produced by `Finding.as_dict()`.
+
+    Strict: any unknown string is a producer bug (corpus.py → sarif.py round-
+    trip), so raise rather than silently downgrading to MEDIUM and masking
+    a CRITICAL/HIGH finding in downstream SARIF.
+    """
+    try:
+        return _SEV_BY_STR[s]
+    except KeyError as exc:
+        raise ValueError(
+            f"unknown severity string {s!r}; expected one of {sorted(_SEV_BY_STR)}"
+        ) from exc
 
 
 __all__ = ["SARIF_VERSION", "SarifInput", "from_corpus_rows", "to_sarif"]
