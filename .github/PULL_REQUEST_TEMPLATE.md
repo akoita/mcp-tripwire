@@ -9,6 +9,8 @@
 - [ ] Stubs self-flagged (`# STUB(Exx):`) — no silent partials (Rule #9)
 - [ ] ADR added if a structural decision was made
 - [ ] `docs/STATUS.md` / `CHANGELOG.md` updated
+- [ ] `docs/features/` updated if any user-visible behaviour changed (catalog is the precise reference — see [docs/features/README.md](../blob/main/docs/features/README.md))
+- [ ] Issue-close keywords used carefully: `Closes #N` only when ALL acceptance criteria are met; `Refs #N` for partial work
 
 ## Threat / residual risk
 <!-- OWASP MCP categories touched; what remains unmitigated. -->
