@@ -116,6 +116,7 @@ ROOT_FILE_ALLOWLIST: dict[str, str] = {
     ".pre-commit-config.yaml": "pre-commit looks here.",
     ".dockerignore": "Docker looks here (allowed even if absent today).",
     ".gitattributes": "Git looks here (allowed even if absent today).",
+    ".git": "Git worktree: `.git` is a FILE (not a dir); git-owned, must be at root.",
 }
 
 
