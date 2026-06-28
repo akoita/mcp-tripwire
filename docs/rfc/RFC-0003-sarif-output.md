@@ -1,6 +1,6 @@
 # RFC-0003 — SARIF 2.1.0 output for `scan` and `ci`
 
-**Status:** **draft v2 — review-requested (Codex round-1 review folded in)**
+**Status:** **accepted (v2 — Codex round-2 sign-off, 2026-06-28)**
 **Author:** Aboubakar Koita (with Claude)
 **Issue:** [#32](https://github.com/akoita/mcp-tripwire/issues/32)
 **Relates to:** [RFC-0002 Ed25519 signing](RFC-0002-ed25519-signing.md), [`src/tripwire/cli.py`](../../src/tripwire/cli.py), [`src/tripwire/corpus.py`](../../src/tripwire/corpus.py), [`app/fast_api_app.py`](../../app/fast_api_app.py), [`src/tripwire/owasp.py`](../../src/tripwire/owasp.py)
