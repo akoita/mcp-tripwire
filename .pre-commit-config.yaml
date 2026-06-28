@@ -33,3 +33,10 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: features-diff-coverage
+        name: features-diff-coverage — code change must touch docs/features/
+        entry: scripts/check_features_diff_coverage.sh
+        language: script
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
