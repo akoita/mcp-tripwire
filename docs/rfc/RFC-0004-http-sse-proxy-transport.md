@@ -1,6 +1,6 @@
 # RFC-0004 — HTTP/SSE MCP proxy transport
 
-**Status:** **draft — REVIEW REQUESTED**
+**Status:** **accepted (v2 — reviewer answers folded in 2026-06-28)**
 **Author:** Aboubakar Koita (with Claude)
 **Issue:** [#33](https://github.com/akoita/mcp-tripwire/issues/33)
 **Relates to:** [RFC-0001 stdio bridge](RFC-0001-e2-stdio-proxy-bridge.md), [RFC-0002 Ed25519](RFC-0002-ed25519-signing.md), [`src/tripwire/proxy.py`](../../src/tripwire/proxy.py), [`app/fast_api_app.py`](../../app/fast_api_app.py)
@@ -195,6 +195,23 @@ No CLI subcommand for v0.2 — the proxy lives in the deployed HTTP gateway, not
 | 6 | `sse-starlette` (server) + `httpx-sse` (client) under `[agent]` extra | Both idiomatic, both well-maintained, both already in the FastAPI/httpx ecosystem this project uses. |
 | 7 | `TRIPWIRE_UPSTREAM_SSE_URL` env switches the `/mcp/sse` mount on | Off by default — operators opt in by configuring their upstream. |
 | 8 | Cache invalidation on disconnect + fresh `tools/list` on resume | Stale-cache rug-pull detection requires confidence in current upstream advertisement. |
+
+| 9 | Process readiness vs upstream readiness: `/healthz` reports the **gateway process**, NOT the upstream MCP. `/mcp/sse/*` returns **503** with a non-secret diagnostic while `TRIPWIRE_UPSTREAM_SSE_URL` is unreachable. | Startup fail-fast on a third-party dependency Tripwire does not control would make Cloud Run / local demos brittle. Operators get a clear retryable signal at the right surface. |
+
+## Reviewer sign-off (2026-06-28)
+
+Reviewer answers to the six PR-body questions, folded back into this RFC:
+
+| # | PR question | Decision |
+|---|---|---|
+| 1 | `sse-starlette` + `httpx-sse` vs `aiohttp`? | **Keep the pinned pair under `[agent]`.** Aligns with the existing FastAPI/httpx deploy shell; a second async HTTP stack just for SSE would be net-negative. All third-party SSE code stays outside `src/tripwire/` via `app/sse_adapter.py` (Decision #5). |
+| 2 | Reconnect-once vs `TRIPWIRE_UPSTREAM_RECONNECT_ATTEMPTS=N` knob? | **Reconnect once for v0.2; defer the knob.** Single reconnect is reasoned-about and tested; cache-clear semantics are security-relevant. The knob can land after the first real deployment proves the shape. (Decision #2.) |
+| 3 | Shared engine vs per-client engine? | **Shared engine, per-client proxy instance.** Engine = deployment policy / approval state. Proxy = client-scoped transport state (`_live_tools`, pending request IDs, stream lifecycle). Per-client engines would split approvals and add avoidable memory churn. (Decision #1.) |
+| 4 | `/mcp/sse` URL prefix fixed vs configurable? | **Fixed for v0.2.** Path configurability belongs at the deploy edge (reverse proxy, Cloud Run routing, API gateway). The two concrete child endpoints are spelled out: `/mcp/sse/events` (SSE subscription) and `/mcp/sse/messages` (inbound POST). |
+| 5 | Reuse the existing `vulnerable_mcp_server` fixture vs new fixture? | **Reuse the vulnerable tool model; ship a sibling SSE transport fixture.** Wording tweak: "shared vulnerable model, separate SSE transport fixture." Same clean / poisoned / rug-pull semantics so stdio and SSE demos prove the **same** threat model; transport setup stays readable in `fake_sse_mcp_server.py` next to the stdio one. |
+| 6 | Failure mode when upstream is unreachable at startup? | **App boots healthy; `/mcp/sse/*` returns 503.** Codified above as Decision #9. |
+
+Overall: RFC direction approved; v0.2 surface stays deliberately small. Implementation lands on [#33](https://github.com/akoita/mcp-tripwire/issues/33) per the §Day-N plan.
 
 ## Test plan
 
