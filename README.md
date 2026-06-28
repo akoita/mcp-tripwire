@@ -78,7 +78,10 @@ Implementation status:
 | Transparent stdio MCP proxy bridge (E2) | ✅ implemented | [`src/tripwire/proxy.py`](src/tripwire/proxy.py) — design in [RFC-0001](docs/rfc/RFC-0001-e2-stdio-proxy-bridge.md) |
 | Attack corpus runner (incl. drift case) | ✅ implemented | [`src/tripwire/corpus.py`](src/tripwire/corpus.py), [`corpus/attacks.jsonl`](corpus/attacks.jsonl) |
 | ADK Scanner / Red-team / Attestor + coordinator | ✅ implemented | [`src/tripwire/agents/`](src/tripwire/agents/), [`app/agent.py`](app/agent.py) — spec in [.agents-cli-spec.md](.agents-cli-spec.md) |
-| Cloud Run deploy via `agents-cli` | 🟡 planned | scaffolding present ([`app/fast_api_app.py`](app/fast_api_app.py), [`agents-cli-manifest.yaml`](agents-cli-manifest.yaml)); HTTP gateway wiring is the next P1 |
+| HTTP gateway endpoints (`/scan` · `/verify` · `/eval` · `/healthz`) | ✅ implemented | [`app/fast_api_app.py`](app/fast_api_app.py) — 8 endpoint tests in [`tests/integration/test_http_endpoints.py`](tests/integration/test_http_endpoints.py); same verdict shapes as the CLI |
+| Local Docker deploy (verified end-to-end) | ✅ implemented | [`Dockerfile`](Dockerfile) + smoke in [`docs/runbooks/deploy.md`](docs/runbooks/deploy.md) |
+| Cloud Run deploy via `agents-cli deploy` | 🟢 staged | configured in [`agents-cli-manifest.yaml`](agents-cli-manifest.yaml); deploy steps + rollback in [`docs/runbooks/deploy.md`](docs/runbooks/deploy.md) — requires GCP creds, not yet pushed |
+| Stdio MCP gateway over HTTP/SSE (proxy bridge in the cloud) | 🟡 planned | future surface; the current Cloud Run service is policy-only (scan / verify / eval), not a transparent MCP bridge |
 | Signing scheme: HMAC-SHA256 → Ed25519 | 🟡 planned | tracked in [STATUS.md](STATUS.md) |
 
 ## Quickstart
