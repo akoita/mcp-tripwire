@@ -176,3 +176,127 @@ def eval_corpus(request: Request):
         "passed": passed,
         "rows": result.rows,
     }
+
+
+# ----------------------------------------------------------------- /mcp/sse
+# RFC-0004 / #33 slot 6 — HTTP gateway mount for SSE-transport MCP servers.
+#
+# Two endpoints:
+#   GET  /mcp/sse/events          subscribe to server→client SSE stream
+#   POST /mcp/sse/messages?...    client→server JSON-RPC frames
+#
+# Gated by TRIPWIRE_UPSTREAM_SSE_URL (Decision #7). With it unset, both
+# endpoints return 503 with a non-secret diagnostic (Decision #9 — gateway
+# liveness vs upstream readiness, codified in the RFC's reviewer round).
+#
+# Per-client session lifecycle: GET /events spins up a fresh
+# SseClientStream + SseServerStream + SseTripwireProxy + bridge task, all
+# tracked under a UUID. The first SSE frame is an `endpoint` event pointing
+# at /messages?session=<uuid>; subsequent POSTs route into that session's
+# inbound queue. The session closes on client disconnect.
+
+
+import uuid as _uuid  # noqa: E402
+
+from fastapi import HTTPException  # noqa: E402
+
+
+def _upstream_sse_url() -> str | None:
+    """Read at request time so tests can monkeypatch."""
+    return os.environ.get("TRIPWIRE_UPSTREAM_SSE_URL")
+
+
+# In-process session table: session_id → SseClientStream.
+# Lifetime is tied to the active GET /events handler.
+_sse_sessions: dict[str, object] = {}
+
+
+def _ensure_upstream_or_503() -> str:
+    """RFC-0004 Decision #9: gateway readiness != upstream readiness.
+    With no upstream configured, surface a clear 503 on the SSE endpoints
+    while /healthz keeps reporting the process is alive."""
+    url = _upstream_sse_url()
+    if not url:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "SSE proxy not configured: set TRIPWIRE_UPSTREAM_SSE_URL to a "
+                "reachable MCP-over-SSE server. /healthz continues to report "
+                "gateway-process liveness only."
+            ),
+        )
+    return url
+
+
+@app.get("/mcp/sse/events")
+async def mcp_sse_events(request: Request):
+    """Open the SSE subscription. First frame is `event: endpoint, data:
+    /mcp/sse/messages?session=<uuid>` so the client knows where to POST.
+    Subsequent frames carry server→client JSON-RPC responses."""
+    import asyncio
+
+    from sse_starlette.sse import EventSourceResponse
+
+    from app.sse_adapter import SseClientStream, SseServerStream
+    from tripwire import TripwireEngine
+    from tripwire.proxy import SseTripwireProxy
+
+    upstream_url = _ensure_upstream_or_503()
+
+    session_id = _uuid.uuid4().hex
+    client_stream = SseClientStream()
+    _sse_sessions[session_id] = client_stream
+
+    # Forward request headers byte-for-byte (Decision #3) but strip Host so the
+    # upstream HTTP client picks the correct one.
+    forwarded_headers = {
+        k: v for k, v in request.headers.items() if k.lower() not in {"host", "content-length"}
+    }
+    server_stream = SseServerStream(
+        upstream_url,
+        headers=forwarded_headers,
+        on_disconnect=client_stream.close_inbound,
+    )
+    engine = TripwireEngine(signing_key=_signing_key())
+    proxy = SseTripwireProxy(engine)
+
+    async def session_lifecycle():
+        """Run the bridge for the lifetime of this connection."""
+        try:
+            async with server_stream as srv:
+                await proxy.bridge_sse(client_stream=client_stream, server_stream=srv)
+        except (asyncio.CancelledError, ConnectionResetError):
+            pass
+
+    bridge_task = asyncio.create_task(session_lifecycle(), name=f"sse-session-{session_id}")
+
+    async def event_stream():
+        try:
+            # First frame: tell the client where to POST.
+            yield {"event": "endpoint", "data": f"/mcp/sse/messages?session={session_id}"}
+            async for line in client_stream.iter_outbound():
+                if await request.is_disconnected():
+                    break
+                yield {"event": "message", "data": line.decode()}
+        finally:
+            client_stream.close_inbound()
+            _sse_sessions.pop(session_id, None)
+            bridge_task.cancel()
+            try:
+                await bridge_task
+            except (asyncio.CancelledError, Exception):  # noqa: BLE001, S110
+                pass
+
+    return EventSourceResponse(event_stream())
+
+
+@app.post("/mcp/sse/messages")
+async def mcp_sse_messages(session: str, request: Request):
+    """Inbound JSON-RPC frame. Routes to the open SSE session by id."""
+    _ensure_upstream_or_503()
+    stream = _sse_sessions.get(session)
+    if stream is None:
+        raise HTTPException(status_code=404, detail=f"unknown session: {session}")
+    body = await request.body()
+    stream.push_inbound(body)  # type: ignore[attr-defined]
+    return {"queued": True}
