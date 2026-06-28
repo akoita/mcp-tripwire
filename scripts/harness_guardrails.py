@@ -140,6 +140,49 @@ def check_root_clean() -> None:
         )
 
 
+# Convention: docs/features/ is the canonical per-feature reference. Every
+# .md file in that directory must be linked from the index README; every
+# link in the index must resolve. Catches drift in both directions —
+# orphan pages no one links to, and dead links to deleted pages.
+_FEATURE_LINK = re.compile(r"\(([\w_\-/]+\.md)\)")
+
+
+def check_features_catalog_consistent() -> None:
+    """Index ↔ page consistency for docs/features/.
+
+    Why: the feature catalog is only useful if contributors trust it
+    reflects reality. A page that exists but isn't indexed is invisible;
+    a link in the index that points at a deleted file is a stale
+    promise. Both fail the build with a clear remediation.
+    """
+    features_dir = ROOT / "docs" / "features"
+    if not features_dir.exists():
+        return  # catalog not adopted in this project yet
+    index = features_dir / "README.md"
+    if not index.exists():
+        fail("[features-catalog] docs/features/ exists but has no README.md index.")
+        return
+
+    pages_on_disk = {p.name for p in features_dir.glob("*.md") if p.name != "README.md"}
+    index_text = index.read_text(encoding="utf-8")
+    # Pull all relative .md links from the index; restrict to entries that
+    # resolve to a sibling file (no `../` or absolute paths).
+    linked = {match for match in _FEATURE_LINK.findall(index_text) if "/" not in match}
+
+    for orphan in sorted(pages_on_disk - linked):
+        fail(
+            f"[features-catalog] docs/features/{orphan} exists but is not "
+            f"linked from docs/features/README.md. Either link it from the "
+            f"index or delete the page."
+        )
+    for missing in sorted(linked - pages_on_disk):
+        fail(
+            f"[features-catalog] docs/features/README.md links to "
+            f"docs/features/{missing}, but the file doesn't exist. "
+            f"Create the page or fix the link."
+        )
+
+
 def main() -> int:
     for check in (
         check_core_dependency_free,
@@ -147,6 +190,7 @@ def main() -> int:
         check_demo_safety,
         check_stubs_flagged,
         check_root_clean,
+        check_features_catalog_consistent,
     ):
         check()
     if violations:
@@ -155,7 +199,8 @@ def main() -> int:
             print(f"  - {v}")
         return 1
     print(
-        "✓ harness guardrails passed (hard rules #2, #3, #4, #9 + root-clean convention verified)"
+        "✓ harness guardrails passed "
+        "(hard rules #2, #3, #4, #9 + root-clean + feature-catalog conventions verified)"
     )
     return 0
 

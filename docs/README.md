@@ -10,6 +10,7 @@ Knowledge context for humans and agents (the "Knowledge" row of the context map 
   - [ADR-0004](adr/ADR-0004-secret-and-payload-hygiene.md) — secret & payload hygiene
   - [ADR-0005](adr/ADR-0005-two-layer-verification.md) — two-layer verification (tests + evals)
 - **rfc/** — proposals under discussion.
+- **[features/](features/)** — **the precise reference** for what Tripwire delivers, per capability. One page per feature; index at [features/README.md](features/README.md). The catalog is the precise reference; the project root README is the pitch.
 - **plans/** — per-epic delivery plans (from `_TEMPLATE.md`).
 - **runbooks/** — operational guides ([demo proof-moment](runbooks/demo-proof-moment.md)).
 

@@ -51,6 +51,7 @@ Product spec → [docs/SPEC.md](docs/SPEC.md). Plan → [docs/ROADMAP.md](docs/R
 - Docstrings + type hints on all public functions. Comments explain *why*, not *what*.
 - Findings map to the **OWASP MCP Top 10** taxonomy (`src/tripwire/owasp.py`).
 - **Repo root stays uncluttered.** Working memory (`STATUS.md`, `ROADMAP.md`, `BACKLOG.md`, `TECH_DEBT.md`, `SPEC.md`, `SUBMISSION_CHECKLIST.md`) lives under `docs/`. Only files with a tooling/ecosystem reason live at the root — the explicit allowlist is `ROOT_FILE_ALLOWLIST` in [`scripts/harness_guardrails.py`](scripts/harness_guardrails.py), enforced by `make check`. Adding a new root file means appending to the allowlist with a one-line justification (or finding the right subdir for it).
+- **Feature catalog.** Every user-visible capability has a per-feature page under [`docs/features/`](docs/features/) indexed by [`docs/features/README.md`](docs/features/README.md). The catalog is the **precise reference** ("what specifically does Tripwire deliver to the agent / operator?"); the project root README is the **pitch**. Behaviour changes that affect any consumer of Tripwire must update the relevant feature page in the same PR. Index ↔ page consistency is verified by `check_features_catalog_consistent()` in `scripts/harness_guardrails.py` — orphan pages and dead links fail `make check`.
 
 ## When the agent makes a mistake
 Fix the **harness**, not just the symptom: add a rule here (and an ADR if structural), or encode
