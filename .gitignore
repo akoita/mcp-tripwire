@@ -29,3 +29,4 @@ artifacts/grade_results/*
 # Claude Code internals (worktrees, local session state)
 .claude/worktrees/
 .claude/settings.local.json
+.claude/watchdog/

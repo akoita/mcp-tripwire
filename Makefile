@@ -4,7 +4,7 @@
 PYTHON ?= python3
 VENV ?= .venv
 RUN_PYTHON = $(if $(wildcard $(VENV)/bin/python),$(VENV)/bin/python,$(PYTHON))
-.PHONY: help install ensure-dev check lint test guardrails eval demo ci clean
+.PHONY: help install ensure-dev check lint test guardrails eval demo ci ci-local watchdog-start watchdog-stop watchdog-status watchdog-tick clean
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -65,6 +65,21 @@ demo-proxy:  ## Same proof moment, end-to-end through the StdioTripwireProxy bri
 
 demo-adk:  ## ADK multi-agent demo: Scanner / Red-team / Attestor (requires `[agent]` extra)
 	@if command -v uv >/dev/null 2>&1; then uv run --extra agent python examples/demo_adk.py; else PYTHONPATH=src $(RUN_PYTHON) examples/demo_adk.py || PYTHONPATH=src $(PYTHON) examples/demo_adk.py; fi
+
+ci-local:  ## Full local mirror of CI (lint+test+guardrails + bandit + dogfood + pip-audit)
+	@bash scripts/ci-local.sh
+
+watchdog-start:  ## Start the pr-watchdog daemon in the background (polls open PRs)
+	@bash scripts/pr-watchdog.sh start
+
+watchdog-stop:  ## Stop the pr-watchdog daemon
+	@bash scripts/pr-watchdog.sh stop
+
+watchdog-status:  ## Show pr-watchdog daemon status + seen-PRs ledger
+	@bash scripts/pr-watchdog.sh status
+
+watchdog-tick:  ## Run one watchdog poll in the foreground (no loop)
+	@bash scripts/pr-watchdog.sh tick
 
 clean:  ## Remove caches and eval artifacts
 	rm -rf .pytest_cache .ruff_cache **/__pycache__ artifacts/traces/* artifacts/grade_results/* 2>/dev/null || true
