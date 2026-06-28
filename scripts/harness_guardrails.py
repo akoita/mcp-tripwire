@@ -30,10 +30,11 @@ def _py_files(base: Path, exclude: tuple[str, ...] = ()) -> list[Path]:
     ]
 
 
-# Rule #2: the deterministic core stays dependency-free (agents/ is the only exception).
+# Rule #2: the deterministic core stays dependency-free.
+# agents/ and signing/ are the only exceptions (pluggable adapters gated by extras).
 def check_core_dependency_free() -> None:
     allowed = set(sys.stdlib_module_names) | {"tripwire"}
-    for path in _py_files(CORE, exclude=("agents",)):
+    for path in _py_files(CORE, exclude=("agents", "signing")):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         rel = path.relative_to(ROOT)
         for node in ast.walk(tree):
@@ -184,9 +185,39 @@ def check_features_catalog_consistent() -> None:
         )
 
 
+# Rule #2 corollary: backends in agents/ and signing/ are pluggable adapters gated by
+# extras (`[agent]` / `[signing]`). The engine must NEVER eagerly import them at
+# module level — a base install with neither extra would crash on `import tripwire`.
+# This check parses src/tripwire/attestation.py and fails if it does
+# `from .signing import ...` or `import tripwire.signing[.x]` at module scope.
+def check_pluggable_backends_lazy_imported() -> None:
+    target = CORE / "attestation.py"
+    if not target.exists():
+        return  # engine moved/renamed; bigger problem than this check
+    tree = ast.parse(target.read_text(encoding="utf-8"), filename=str(target))
+    for node in tree.body:  # module-level only — function-body imports are fine
+        mod = None
+        if isinstance(node, ast.ImportFrom):
+            if node.level >= 1 and (node.module or "").split(".")[0] in {"signing"}:
+                mod = f".{node.module}"
+            elif node.level == 0 and (node.module or "").startswith("tripwire.signing"):
+                mod = node.module
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name.startswith("tripwire.signing"):
+                    mod = alias.name
+        if mod:
+            fail(
+                f"[#2-lazy] attestation.py eagerly imports '{mod}' at module scope. "
+                f"Move it inside the function that uses it — a base install without the "
+                f"`[signing]` extra must still `import tripwire` cleanly."
+            )
+
+
 def main() -> int:
     for check in (
         check_core_dependency_free,
+        check_pluggable_backends_lazy_imported,
         check_no_hardcoded_secrets,
         check_demo_safety,
         check_stubs_flagged,

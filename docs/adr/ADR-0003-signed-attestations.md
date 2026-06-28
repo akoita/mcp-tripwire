@@ -16,4 +16,4 @@ anchor to a blockchain — offline signing is right-sized; ledger anchoring is "
 ## Consequences
 - Hard Rule #1 (never trust an unverified manifest) — all trust flows through `attestation.py`.
 - The proof moment ("tamper → verification fails") is built in and demoable.
-- HMAC requires a shared secret; Ed25519 (P1) removes that for third-party verification.
+- HMAC requires a shared secret; Ed25519 (P1) removes that for third-party verification. Specced in [RFC-0002](../rfc/RFC-0002-ed25519-signing.md); landing on issue [#31](https://github.com/akoita/mcp-tripwire/issues/31).

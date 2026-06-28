@@ -12,7 +12,7 @@ Product spec → [docs/SPEC.md](docs/SPEC.md). Plan → [docs/ROADMAP.md](docs/R
 
 ## Stack
 - **Language:** Python ≥3.12, managed by **`uv`** (never pip/poetry directly).
-- **Deterministic core:** standard library only — no third-party imports under `src/tripwire/` (except the optional `agents/` package).
+- **Deterministic core:** standard library only — no third-party imports under `src/tripwire/` (except the optional `agents/` and `signing/` packages — pluggable adapters gated behind extras).
 - **Agent layer (P1):** Google **ADK** (`google-adk`), behind the `[agent]` extra.
 - **Protocol:** MCP / JSON-RPC 2.0 over stdio + SSE/HTTP, spec `2025-11-25`.
 - **Quality:** `ruff` (lint+format) · `pytest` · deterministic `scripts/harness_guardrails.py`.
@@ -20,7 +20,7 @@ Product spec → [docs/SPEC.md](docs/SPEC.md). Plan → [docs/ROADMAP.md](docs/R
 
 ## Hard rules (never violate — each maps to an ADR)
 1. **Never trust an unsigned/unverified manifest.** All trust flows through `attestation.py`. → [ADR-0003](docs/adr/ADR-0003-signed-attestations.md)
-2. **The deterministic core stays dependency-free.** No third-party imports in `src/tripwire/` except `agents/`. → [ADR-0001](docs/adr/ADR-0001-mcp-trust-gateway.md)
+2. **The deterministic core stays dependency-free.** No third-party imports in `src/tripwire/` except `agents/` and `signing/` (pluggable adapters, each gated behind an extra; engine never eagerly imports them). → [ADR-0001](docs/adr/ADR-0001-mcp-trust-gateway.md)
 3. **No secrets/keys/credentials in code, prompts, or logs.** Env vars only; `.env` git-ignored; never log raw tool payloads. → [ADR-0004](docs/adr/ADR-0004-secret-and-payload-hygiene.md)
 4. **Demos use a clearly-labelled CANARY secret + local fake sink.** Never touch real `~/.ssh`, env, or credentials. Say "canary secret" out loud.
 5. **Tests/evals are the contract — write them before the code.** Both layers required: deterministic `pytest` + non-deterministic evals. → [ADR-0005](docs/adr/ADR-0005-two-layer-verification.md)
@@ -46,7 +46,7 @@ Product spec → [docs/SPEC.md](docs/SPEC.md). Plan → [docs/ROADMAP.md](docs/R
 | Guardrails | `scripts/harness_guardrails.py`, `.claude/settings.json`, `security` policy |
 
 ## Conventions
-- Core modules: `src/tripwire/{detection,engine,attestation,owasp,corpus,proxy,cli}.py`; optional ADK agents in `src/tripwire/agents/`.
+- Core modules: `src/tripwire/{detection,engine,attestation,owasp,corpus,proxy,cli}.py`; optional ADK agents in `src/tripwire/agents/`; optional crypto backends in `src/tripwire/signing/` (HMAC default, Ed25519 via `[signing]` extra).
 - Skills: `.agents/skills/<snake_case>/SKILL.md` (name field = kebab-case gerund). `.claude/skills` + `.gemini/commands` adapt the same files.
 - Docstrings + type hints on all public functions. Comments explain *why*, not *what*.
 - Findings map to the **OWASP MCP Top 10** taxonomy (`src/tripwire/owasp.py`).
