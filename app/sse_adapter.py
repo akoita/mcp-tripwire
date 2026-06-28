@@ -114,15 +114,25 @@ class SseServerStream:
     are forwarded byte-for-byte on both the POST and the GET (Decision #3).
     """
 
-    def __init__(self, upstream_url: str, *, headers: dict[str, str] | None = None) -> None:
+    def __init__(
+        self,
+        upstream_url: str,
+        *,
+        headers: dict[str, str] | None = None,
+        on_disconnect: callable | None = None,
+    ) -> None:
         self._url = upstream_url.rstrip("/")
         self._headers = dict(headers or {})
+        # Operator may pass on_disconnect to clear engine state on upstream drop.
+        # RFC-0004 §"Reconnect / resume": cache cleared so no stale-state survives.
+        self._on_disconnect = on_disconnect
         self.reader: asyncio.StreamReader = asyncio.StreamReader()
         self._client = None
         self._sse_task: asyncio.Task | None = None
         self._post_queue: asyncio.Queue = asyncio.Queue()
         self._post_task: asyncio.Task | None = None
         self.writer = _QueueWriter(self._post_queue)
+        self.disconnected: bool = False
 
     async def __aenter__(self) -> SseServerStream:
         import httpx  # lazy — keeps the module importable without httpx
@@ -154,16 +164,46 @@ class SseServerStream:
             await self._client.aclose()
 
     async def _sse_loop(self) -> None:
+        """RFC-0004 Decision #2: reconnect ONCE on drop, then give up. On
+        terminal failure, EOF the reader so the bridge stops cleanly and fire
+        the on_disconnect callback so the engine can clear its `_live_tools`
+        cache (no stale state survives a cleanly-failed connection)."""
+        import httpx
         from httpx_sse import aconnect_sse  # lazy
 
-        async with aconnect_sse(
-            self._client, "GET", f"{self._url}/events", headers=self._headers
-        ) as es:
-            async for event in es.aiter_sse():
-                if event.event != "message":
+        for attempt in (1, 2):  # initial connect + one reconnect
+            try:
+                async with aconnect_sse(
+                    self._client, "GET", f"{self._url}/events", headers=self._headers
+                ) as es:
+                    async for event in es.aiter_sse():
+                        if event.event != "message":
+                            continue
+                        # Each SSE 'data:' becomes one line into the reader.
+                        self.reader.feed_data((event.data + "\n").encode())
+                # Clean end of stream — no reconnect needed.
+                self.reader.feed_eof()
+                self._signal_disconnect()
+                return
+            except asyncio.CancelledError:
+                raise
+            except (httpx.HTTPError, OSError):
+                if attempt == 1:
+                    # One reconnect attempt, then fall through to giving up.
                     continue
-                # Each SSE 'data:' becomes one line into the reader.
-                self.reader.feed_data((event.data + "\n").encode())
+                break
+        # Both attempts failed (or the clean stream ended via exception path).
+        self.reader.feed_eof()
+        self._signal_disconnect()
+
+    def _signal_disconnect(self) -> None:
+        if not self.disconnected:
+            self.disconnected = True
+            if self._on_disconnect is not None:
+                try:
+                    self._on_disconnect()
+                except Exception:  # noqa: BLE001, S110 - callback hygiene
+                    pass
 
     async def _post_loop(self) -> None:
         while True:

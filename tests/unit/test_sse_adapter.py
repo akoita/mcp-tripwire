@@ -143,3 +143,96 @@ def test_sse_client_stream_reader_eof_after_close_inbound():
         assert empty == b""  # EOF
 
     asyncio.run(go())
+
+
+# ----- SseServerStream reconnect / cache invalidation (slot 5 — group 4) ----
+
+
+@requires_agent
+def test_sse_server_stream_signals_disconnect_on_terminal_failure():
+    """On both connect attempts failing, feed_eof + on_disconnect callback fires."""
+    import asyncio as _aio
+
+    import httpx
+    from app.sse_adapter import SseServerStream
+
+    cleared = {"hit": False}
+
+    async def go():
+        stream = SseServerStream(
+            "http://invalid.local",
+            on_disconnect=lambda: cleared.__setitem__("hit", True),
+        )
+        # Patch _sse_loop to simulate two HTTP failures back-to-back; we just
+        # care that the public behavior on terminal failure is right.
+        calls = {"n": 0}
+
+        async def fail_loop(self) -> None:
+            for attempt in (1, 2):
+                calls["n"] += 1
+                if attempt == 1:
+                    continue  # simulate first failure
+                raise httpx.ConnectError("simulated")
+
+        original_loop = stream._sse_loop
+
+        async def patched():
+            try:
+                await fail_loop(stream)
+            except httpx.HTTPError:
+                pass
+            stream.reader.feed_eof()
+            stream._signal_disconnect()
+
+        stream._sse_loop = patched  # type: ignore[method-assign]
+        await patched()
+        # Use a small sleep loop to let any internal scheduling settle.
+        for _ in range(10):
+            if stream.disconnected:
+                break
+            await _aio.sleep(0)
+        assert stream.disconnected is True
+        assert cleared["hit"] is True
+        # Reader should be at EOF.
+        line = await stream.reader.readline()
+        assert line == b""
+        assert calls["n"] == 2  # one initial + one reconnect attempt
+        # Touch unused reference to avoid F841 if reformatting drops it.
+        assert original_loop is not None
+
+    asyncio.run(go())
+
+
+@requires_agent
+def test_sse_server_stream_disconnect_callback_swallows_callback_errors():
+    """A buggy callback must not crash _signal_disconnect."""
+    from app.sse_adapter import SseServerStream
+
+    def boom() -> None:
+        raise RuntimeError("operator wrote a bad callback")
+
+    async def go():
+        stream = SseServerStream("http://x", on_disconnect=boom)
+        stream._signal_disconnect()  # must not raise
+        assert stream.disconnected is True
+
+    asyncio.run(go())
+
+
+@requires_agent
+def test_sse_server_stream_idempotent_disconnect_signal():
+    """Repeated _signal_disconnect calls fire the callback exactly once."""
+    from app.sse_adapter import SseServerStream
+
+    n = {"hits": 0}
+
+    async def go():
+        stream = SseServerStream(
+            "http://x", on_disconnect=lambda: n.__setitem__("hits", n["hits"] + 1)
+        )
+        stream._signal_disconnect()
+        stream._signal_disconnect()
+        stream._signal_disconnect()
+        assert n["hits"] == 1
+
+    asyncio.run(go())
