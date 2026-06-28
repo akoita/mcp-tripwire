@@ -1,6 +1,6 @@
 # Runbook — SARIF in GitHub Actions
 
-> Per [RFC-0003](../rfc/RFC-0003-sarif-output.md). Closes the v0.2 operator path: Tripwire findings land in **real** GitHub Code Scanning on a target repo, annotated with OWASP MCP categories, severity, and `helpUri`s.
+> Per [RFC-0003](../rfc/RFC-0003-sarif-output.md). Enables the v0.2 operator path: Tripwire findings land in **real** GitHub Code Scanning on a target repo, annotated with OWASP MCP categories, severity, and `helpUri`s. The operator-path proof closes only once a real Code Scanning screenshot is recorded — see the feature page for the manual-verification checkbox.
 
 ## The whole thing in six lines of YAML
 
