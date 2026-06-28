@@ -119,13 +119,20 @@ class SseServerStream:
         upstream_url: str,
         *,
         headers: dict[str, str] | None = None,
-        on_disconnect: callable | None = None,
+        on_cache_invalidate: callable | None = None,
+        on_terminal: callable | None = None,
     ) -> None:
         self._url = upstream_url.rstrip("/")
         self._headers = dict(headers or {})
-        # Operator may pass on_disconnect to clear engine state on upstream drop.
-        # RFC-0004 §"Reconnect / resume": cache cleared so no stale-state survives.
-        self._on_disconnect = on_disconnect
+        # Two separate callbacks (Codex review of slot 5):
+        #   on_cache_invalidate fires on EVERY upstream drop, including before
+        #     a reconnect attempt — so the proxy's _live_tools is cleared and
+        #     the fresh-stream tools/list rebuilds it. RFC §"Reconnect" + #8.
+        #   on_terminal fires exactly once when the connection is over for good
+        #     (both reconnect attempts exhausted, or clean end of stream) —
+        #     for stream-close cleanup at the gateway layer.
+        self._on_cache_invalidate = on_cache_invalidate
+        self._on_terminal = on_terminal
         self.reader: asyncio.StreamReader = asyncio.StreamReader()
         self._client = None
         self._sse_task: asyncio.Task | None = None
@@ -164,10 +171,13 @@ class SseServerStream:
             await self._client.aclose()
 
     async def _sse_loop(self) -> None:
-        """RFC-0004 Decision #2: reconnect ONCE on drop, then give up. On
-        terminal failure, EOF the reader so the bridge stops cleanly and fire
-        the on_disconnect callback so the engine can clear its `_live_tools`
-        cache (no stale state survives a cleanly-failed connection)."""
+        """RFC-0004 Decision #2: reconnect ONCE on drop, then give up. On every
+        drop (including before reconnect), fire on_cache_invalidate so the
+        proxy's _live_tools clears and a fresh tools/list rebuilds it (RFC
+        §"Reconnect" + Decision #8 — no stale state survives a cleanly-failed
+        connection). At terminal end (clean EOF or both attempts exhausted)
+        feed_eof + fire on_terminal so the gateway can close the client stream.
+        """
         import httpx
         from httpx_sse import aconnect_sse  # lazy
 
@@ -181,33 +191,61 @@ class SseServerStream:
                             continue
                         # Each SSE 'data:' becomes one line into the reader.
                         self.reader.feed_data((event.data + "\n").encode())
-                # Clean end of stream — no reconnect needed.
-                self.reader.feed_eof()
-                self._signal_disconnect()
-                return
+                # Clean end of stream — terminal.
+                break
             except asyncio.CancelledError:
                 raise
             except (httpx.HTTPError, OSError):
+                # The upstream just dropped. Even if we're about to reconnect,
+                # the cache must clear NOW — a tool approved pre-drop must be
+                # re-vetted via the fresh stream's tools/list.
+                self._notify_cache_invalidate()
                 if attempt == 1:
-                    # One reconnect attempt, then fall through to giving up.
                     continue
                 break
-        # Both attempts failed (or the clean stream ended via exception path).
+        # Stream is over (clean or terminal failure).
         self.reader.feed_eof()
-        self._signal_disconnect()
+        self._notify_terminal()
 
-    def _signal_disconnect(self) -> None:
-        if not self.disconnected:
-            self.disconnected = True
-            if self._on_disconnect is not None:
-                try:
-                    self._on_disconnect()
-                except Exception:  # noqa: BLE001, S110 - callback hygiene
-                    pass
+    def _notify_cache_invalidate(self) -> None:
+        """Fired on every upstream drop. Cleared cache → fresh tools/list."""
+        if self._on_cache_invalidate is None:
+            return
+        try:
+            self._on_cache_invalidate()
+        except Exception:  # noqa: BLE001, S110 - callback hygiene
+            pass
+
+    def _notify_terminal(self) -> None:
+        """Fired once when the connection is over for good. Idempotent."""
+        if self.disconnected:
+            return
+        self.disconnected = True
+        if self._on_terminal is None:
+            return
+        try:
+            self._on_terminal()
+        except Exception:  # noqa: BLE001, S110 - callback hygiene
+            pass
 
     async def _post_loop(self) -> None:
+        """Drain the outbound queue, POSTing each line to /messages. A transport
+        error on POST is treated as a terminal upstream issue (Codex review):
+        we cache-invalidate + signal terminal + EOF the reader so the bridge
+        stops accepting client frames into a dead session, instead of hanging.
+        """
+        import httpx
+
         while True:
             line = await self._post_queue.get()
             if line is None:
                 return
-            await self._client.post(f"{self._url}/messages", content=line, headers=self._headers)
+            try:
+                await self._client.post(
+                    f"{self._url}/messages", content=line, headers=self._headers
+                )
+            except (httpx.HTTPError, OSError):
+                self._notify_cache_invalidate()
+                self.reader.feed_eof()
+                self._notify_terminal()
+                return

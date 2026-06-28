@@ -41,6 +41,13 @@ class StdioTripwireProxy:
         # re-fingerprint against.
         self._live_tools: dict[str, dict] = {}
 
+    def invalidate_cache(self) -> None:
+        """Clear the live-tools cache. Called by SseServerStream on every upstream
+        drop so the post-reconnect tools/list rebuilds confidence in current
+        advertisements (RFC-0004 §Reconnect / Decision #8). Safe to call any
+        time; the next tools/list response will rebuild the cache wholesale."""
+        self._live_tools = {}
+
     # ------------------------------------------------------------------
     # Guard methods (transport-agnostic; covered by unit + integration tests)
 

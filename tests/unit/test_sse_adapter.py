@@ -145,94 +145,99 @@ def test_sse_client_stream_reader_eof_after_close_inbound():
     asyncio.run(go())
 
 
-# ----- SseServerStream reconnect / cache invalidation (slot 5 — group 4) ----
+# ----- SseServerStream cache-invalidate + terminal callbacks (Codex round 1) -
 
 
 @requires_agent
-def test_sse_server_stream_signals_disconnect_on_terminal_failure():
-    """On both connect attempts failing, feed_eof + on_disconnect callback fires."""
-    import asyncio as _aio
-
-    import httpx
+def test_sse_server_stream_cache_invalidate_fires_on_every_drop():
+    """Codex P1: on every upstream drop (including the one before reconnect),
+    on_cache_invalidate must fire so the proxy's _live_tools is cleared and
+    the fresh-stream tools/list rebuilds it. RFC-0004 §Reconnect + #8."""
     from app.sse_adapter import SseServerStream
 
-    cleared = {"hit": False}
+    cache_clears = {"n": 0}
+    terminal_hits = {"n": 0}
 
     async def go():
         stream = SseServerStream(
-            "http://invalid.local",
-            on_disconnect=lambda: cleared.__setitem__("hit", True),
+            "http://x",
+            on_cache_invalidate=lambda: cache_clears.__setitem__("n", cache_clears["n"] + 1),
+            on_terminal=lambda: terminal_hits.__setitem__("n", terminal_hits["n"] + 1),
         )
-        # Patch _sse_loop to simulate two HTTP failures back-to-back; we just
-        # care that the public behavior on terminal failure is right.
-        calls = {"n": 0}
-
-        async def fail_loop(self) -> None:
-            for attempt in (1, 2):
-                calls["n"] += 1
-                if attempt == 1:
-                    continue  # simulate first failure
-                raise httpx.ConnectError("simulated")
-
-        original_loop = stream._sse_loop
-
-        async def patched():
-            try:
-                await fail_loop(stream)
-            except httpx.HTTPError:
-                pass
-            stream.reader.feed_eof()
-            stream._signal_disconnect()
-
-        stream._sse_loop = patched  # type: ignore[method-assign]
-        await patched()
-        # Use a small sleep loop to let any internal scheduling settle.
-        for _ in range(10):
-            if stream.disconnected:
-                break
-            await _aio.sleep(0)
-        assert stream.disconnected is True
-        assert cleared["hit"] is True
-        # Reader should be at EOF.
-        line = await stream.reader.readline()
-        assert line == b""
-        assert calls["n"] == 2  # one initial + one reconnect attempt
-        # Touch unused reference to avoid F841 if reformatting drops it.
-        assert original_loop is not None
+        # Simulate: drop, reconnect, drop again (terminal).
+        stream._notify_cache_invalidate()
+        stream._notify_cache_invalidate()
+        stream._notify_terminal()
+        assert cache_clears["n"] == 2  # one per drop
+        assert terminal_hits["n"] == 1  # once at the end
 
     asyncio.run(go())
 
 
 @requires_agent
-def test_sse_server_stream_disconnect_callback_swallows_callback_errors():
-    """A buggy callback must not crash _signal_disconnect."""
-    from app.sse_adapter import SseServerStream
-
-    def boom() -> None:
-        raise RuntimeError("operator wrote a bad callback")
-
-    async def go():
-        stream = SseServerStream("http://x", on_disconnect=boom)
-        stream._signal_disconnect()  # must not raise
-        assert stream.disconnected is True
-
-    asyncio.run(go())
-
-
-@requires_agent
-def test_sse_server_stream_idempotent_disconnect_signal():
-    """Repeated _signal_disconnect calls fire the callback exactly once."""
+def test_sse_server_stream_terminal_is_idempotent():
+    """Once terminal, subsequent _notify_terminal calls are no-ops."""
     from app.sse_adapter import SseServerStream
 
     n = {"hits": 0}
 
     async def go():
         stream = SseServerStream(
-            "http://x", on_disconnect=lambda: n.__setitem__("hits", n["hits"] + 1)
+            "http://x", on_terminal=lambda: n.__setitem__("hits", n["hits"] + 1)
         )
-        stream._signal_disconnect()
-        stream._signal_disconnect()
-        stream._signal_disconnect()
+        stream._notify_terminal()
+        stream._notify_terminal()
+        stream._notify_terminal()
         assert n["hits"] == 1
+        assert stream.disconnected is True
+
+    asyncio.run(go())
+
+
+@requires_agent
+def test_sse_server_stream_callbacks_swallow_exceptions():
+    """Buggy callbacks must not crash the notify path."""
+    from app.sse_adapter import SseServerStream
+
+    def boom() -> None:
+        raise RuntimeError("operator wrote a bad callback")
+
+    async def go():
+        stream = SseServerStream("http://x", on_cache_invalidate=boom, on_terminal=boom)
+        stream._notify_cache_invalidate()  # must not raise
+        stream._notify_terminal()  # must not raise
+        assert stream.disconnected is True
+
+    asyncio.run(go())
+
+
+@requires_agent
+def test_sse_server_stream_post_loop_signals_terminal_on_transport_error():
+    """Codex P1: POST failure → terminal-signal + EOF, not silent task death."""
+    from unittest.mock import AsyncMock
+
+    import httpx
+    from app.sse_adapter import SseServerStream
+
+    cache_clears = {"n": 0}
+    terminal_hits = {"n": 0}
+
+    async def go():
+        stream = SseServerStream(
+            "http://x",
+            on_cache_invalidate=lambda: cache_clears.__setitem__("n", cache_clears["n"] + 1),
+            on_terminal=lambda: terminal_hits.__setitem__("n", terminal_hits["n"] + 1),
+        )
+        stream._client = type(
+            "FakeClient",
+            (),
+            {"post": AsyncMock(side_effect=httpx.ConnectError("nope"))},
+        )()
+        await stream._post_queue.put(b'{"jsonrpc":"2.0","id":1}')
+        await stream._post_loop()
+        assert cache_clears["n"] == 1
+        assert terminal_hits["n"] == 1
+        line = await stream.reader.readline()
+        assert line == b""
 
     asyncio.run(go())

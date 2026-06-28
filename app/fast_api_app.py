@@ -210,6 +210,31 @@ def _upstream_sse_url() -> str | None:
 # Lifetime is tied to the active GET /events handler.
 _sse_sessions: dict[str, object] = {}
 
+# Codex P2 #3: shared engine per RFC-0004 Decision #1 ("one SseTripwireProxy
+# instance per client connection, shared engine"). The engine carries
+# deployment policy (approvals, badges) that MUST be consistent across
+# clients of the same upstream. Per-client engines would split approvals.
+# Lazy so env vars can still be set by the importer / tests.
+_proxy_engine = None
+
+
+def _get_proxy_engine():
+    """Module-level shared engine for the SSE proxy. First call wins; tests
+    can reset via _reset_proxy_engine_for_tests()."""
+    global _proxy_engine
+    if _proxy_engine is None:
+        from tripwire import TripwireEngine
+
+        _proxy_engine = TripwireEngine(signing_key=_signing_key())
+    return _proxy_engine
+
+
+def _reset_proxy_engine_for_tests() -> None:
+    """Test helper: clear the cached engine so the next request rebuilds it
+    from current env. Not exposed via the HTTP surface."""
+    global _proxy_engine
+    _proxy_engine = None
+
 
 def _ensure_upstream_or_503() -> str:
     """RFC-0004 Decision #9: gateway readiness != upstream readiness.
@@ -238,7 +263,6 @@ async def mcp_sse_events(request: Request):
     from sse_starlette.sse import EventSourceResponse
 
     from app.sse_adapter import SseClientStream, SseServerStream
-    from tripwire import TripwireEngine
     from tripwire.proxy import SseTripwireProxy
 
     upstream_url = _ensure_upstream_or_503()
@@ -252,13 +276,20 @@ async def mcp_sse_events(request: Request):
     forwarded_headers = {
         k: v for k, v in request.headers.items() if k.lower() not in {"host", "content-length"}
     }
+    # Shared engine (Decision #1). One proxy per client connection (state
+    # isolation for `_live_tools`); the engine carries approval/badge state
+    # that must be consistent across clients.
+    proxy = SseTripwireProxy(_get_proxy_engine())
     server_stream = SseServerStream(
         upstream_url,
         headers=forwarded_headers,
-        on_disconnect=client_stream.close_inbound,
+        # On every upstream drop (incl. mid-reconnect): clear this client's
+        # live-tools cache so the fresh stream's tools/list rebuilds it.
+        on_cache_invalidate=proxy.invalidate_cache,
+        # On terminal end (both reconnect attempts exhausted, or clean EOF):
+        # close the inbound client stream so the SSE response handler exits.
+        on_terminal=client_stream.close_inbound,
     )
-    engine = TripwireEngine(signing_key=_signing_key())
-    proxy = SseTripwireProxy(engine)
 
     async def session_lifecycle():
         """Run the bridge for the lifetime of this connection."""
