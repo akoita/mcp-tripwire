@@ -1,66 +1,70 @@
-# MCP-Tripwire — Capstone Roadmap
+# MCP-Tripwire — Roadmap
 
-**Goal:** Ship a winning Kaggle AI Agents capstone (Freestyle track) by **Jul 6, 2026, 11:59 PM PT**.
-**Today:** Jun 27, 2026 · **Builder:** solo · **One-liner:** *"Can this agent keep trusting this tool during execution — and can I prove it?"*
+> **Current cut:** `v0.1.0-capstone` ([tag](https://github.com/akoita/mcp-tripwire/releases/tag/v0.1.0-capstone)) — submission-ready state of the Kaggle Freestyle entry.
+> **Now:** post-capstone, working toward **v0.2 — Credibility & integration**.
+> **One-liner:** *"Can this agent keep trusting this tool during execution — and can I prove it?"*
 
-## Status Overview
-- **Done:** 1 epic (tested core + POC)
-- **Now:** 1 epic in progress (proof-moment spine)
-- **Remaining:** 8 epics across 9 days
-- **At risk:** ADK integration, Cloud Run deploy (both have fallbacks)
+## Done — v0.1.0-capstone (2026-07-05)
 
-## Deliverables (all required to be a valid submission)
-1. Public GitHub repo + README w/ setup — **Not Started**
-2. 5-min YouTube video + cover image — **Not Started**
-3. ≤2,500-word Kaggle Writeup, Freestyle track — **Not Started**
-4. Public project link (repo or live demo) — **Not Started**
-5. ≥3 of 6 course concepts — 4 without ADK (MCP server, security, deployability, agents-cli); 5 with ADK (P1) — **On Track**
+Shipped state of the project at the Kaggle submission cut:
 
-## Timeline
-
-### NOW — the spine (Jun 27–28, Sat–Sun)
-| Item | Detail | Status |
+| Epic | What | Where |
 |---|---|---|
-| E1 Core | detection / engine / attestation, 11 tests | **Done** |
-| E2 Transparent MCP proxy (stdio) | Spawn MCP server as subprocess; intercept tool calls; enforce allow/block/quarantine | **In Progress** |
-| E4a Demo scenarios | Hand-rolled vulnerable MCP server + poisoned tool + rug-pull + **labeled canary secret → local fake sink** | Not Started |
-| **🎯 Milestone** | **Proof moment runs end-to-end (poison blocked, rug-pull caught, signed badge breaks on tamper)** | — |
+| E1 Core | detection · engine · attestation · OWASP map · corpus runner · CLI | `src/tripwire/*.py` |
+| E2 Proxy bridge (stdio) | `tools/list` rewrite · `tools/call` drift quarantine · structured stderr log | `src/tripwire/proxy.py` ([RFC-0001](docs/rfc/RFC-0001-e2-stdio-proxy-bridge.md)) |
+| E3 ADK multi-agent | Scanner / Red-team / Attestor + coordinator | `src/tripwire/agents/`, `app/agent.py` ([.agents-cli-spec.md](.agents-cli-spec.md)) |
+| E4 Proof moments | three demos: engine A/B, stdio proxy, ADK pipeline | `examples/demo*.py`, `make demo*` |
+| E6 Cloud Run | HTTP gateway (`/scan` `/verify` `/eval` `/healthz`), local Docker verified, deploy runbook | `app/fast_api_app.py`, [`docs/runbooks/deploy.md`](docs/runbooks/deploy.md) |
+| E7 Submission | README final + Kaggle writeup + video script + dry-run checklist | `docs/{writeup,video-script,SUBMISSION_CHECKLIST}.md` |
+| Harness | hard rules machine-enforced; pre-commit no-commit-to-main; retro-PR'd direct-to-main history | [AGENTS.md](AGENTS.md), `scripts/harness_guardrails.py`, `scripts/no_commit_to_main.sh` |
 
-### NEXT — depth + the win condition (Jun 29 – Jul 2)
-| Item | Detail | Target | Status |
-|---|---|---|---|
-| E3 ADK multi-agent (top-priority P1) | Scanner / Red-team / Attestor agents on the core; descope only if ADK integration fights | Jun 29–30 | Not Started |
-| E4b A/B proof | Agent exfiltrates a **labeled canary** secret to a local fake sink WITHOUT Tripwire → blocked WITH it; `tripwire ci` reports **N/M attacks blocked** + small MCPTox-style corpus | Jul 1 | Not Started |
-| E7a OWASP map | Map every finding to OWASP MCP Top 10 (cheap credibility) | Jul 1 | Not Started |
-| E6 Deploy | Cloud Run + agents-cli packaging (timeboxed) | Jul 2 | Not Started |
-| E5 Signing | Ed25519/sigstore upgrade from HMAC (if time) | Jul 2 | Not Started |
-| **🎯 Milestone** | **Feature-complete + CODE FREEZE (EOD Jul 2)** | — | — |
+Headline numbers at the tag: **41 tests pass**, **9/9 attacks blocked**, 0 false positives on 4 clean tools, deterministic core stdlib-only.
 
-### LATER — tell the story (Jul 3–6)
-| Item | Detail | Target | Status |
-|---|---|---|---|
-| E7b README | Related-Work/wedge framing, architecture diagram, setup | Jul 3 | Not Started |
-| E8 Video | Record + edit 5-min demo; cover image | Jul 3–4 | Not Started |
-| E9 Writeup | ≤2,500 words; submit to Freestyle | Jul 4 | Not Started |
-| E10 Submit | Repo public, links verified, video on YouTube, dry-run | Jul 5 | Not Started |
-| Buffer | Pure contingency — no planned work | Jul 6 | Not Started |
-| **🎯 Milestone** | **Submit early (Jul 5); Jul 6 = contingency only** | — | — |
+Sprint backlog rows still requiring human action (per [SUBMISSION_CHECKLIST.md](docs/SUBMISSION_CHECKLIST.md)): record the video (#11 recording half), push `agents-cli deploy` (#9 push half), Kaggle UI submit (#13 submit half).
 
-## Risks & Dependencies
-| Risk | Impact | Mitigation |
+---
+
+## Next — v0.2 Credibility & integration
+
+**Thesis.** Move from "interesting demo" to "could be dropped into a real security pipeline today." Three pieces that each close a credibility gap the v0.1 README cannot defend:
+
+| Issue | What | Why it's load-bearing |
 |---|---|---|
-| ADK integration friction | Could eat 1–2 days | Core works without ADK; ADK is a layer. If it fights, demo still stands on core+proxy (graceful degradation). |
-| Cloud Run deploy slips | 1 day | Deployment NOT required for judging → fall back to documented local run. |
-| Video/writeup underestimated (30% of score) | Lose easy points | Reserved 1.5 days + buffer; treat as first-class, not afterthought. |
-| Live demo flakiness | Bad video | Deterministic core can't flake; pre-record fallback clips. |
-| Solo single-point-of-failure (life/illness) | Total | Jul 5–6 buffer absorbs; submit early. |
-| Scope creep (out-feature Invariant) | Time sink | Explicit WON'T list below. |
+| [#31](https://github.com/akoita/mcp-tripwire/issues/31) | **Ed25519 signing** over HMAC | HMAC needs a shared secret. Ed25519 makes the badge ecosystem genuinely portable — any verifier with the public key can audit independently, which is what the README's "third-party verifiable attestation" claim actually requires. |
+| [#32](https://github.com/akoita/mcp-tripwire/issues/32) | **SARIF output** for `scan` + `eval` | Findings flow into GitHub Code Scanning / GitLab SAST / any SARIF consumer with zero integration code. Lands findings where security teams already work. |
+| [#33](https://github.com/akoita/mcp-tripwire/issues/33) | **HTTP/SSE MCP transport** in the proxy | The stdio bridge only fronts subprocess-spawned upstreams. Most cloud-hosted MCP servers speak SSE — without this transport, Tripwire is single-host only. |
 
-## Scope discipline (MoSCoW)
-- **Must:** E2 proxy, E4 proof moment (+ signed badge), `tripwire ci`, README, video, writeup, public repo. *(No ADK dependency — this is the minimum valid, winnable submission.)*
-- **Should:** E3 ADK multi-agent (highest priority — build right after the spine), Cloud Run deploy, OWASP mapping.
-- **Could:** Ed25519 upgrade, fuller MCPTox corpus, CI badge polish.
-- **Won't (this round):** out-feature Invariant/mcp-scan, ledger anchoring, multi-framework support.
+Each piece gets a design RFC under [`docs/rfc/`](docs/rfc/) before code. RFCs require human review; implementation PRs cannot land until the RFC merges. This is the **deliberate-pace** ground rule for v0.2.
 
-## Capacity note
-Solo, ~9 days. Roadmap is zero-sum against capacity: **every added feature comes off the buffer.** Priority is a *complete, well-told* submission over an over-built, rushed one. The proof-moment demo is the single highest-leverage asset — it drives both the 70% technical score and the video.
+**Ordering.** Ed25519 lands first (precondition for the other two — SARIF output and SSE-transmitted badges should both speak the new alg). SARIF and SSE can then proceed in parallel.
+
+**Exit criteria for v0.2.0 tag:**
+- All three issues closed by merged PRs.
+- README implementation-status table: every row 🟢 staged or 🟡 planned at v0.1 either flips to ✅ implemented or gets an explicit deferral to v0.3.
+- `make eval` + `make demo*` still green from a fresh clone (regression of any v0.1 capability blocks the tag).
+- A `v0.2.0` release notes section appended below this milestone.
+
+---
+
+## After v0.2 — provisional ordering
+
+### v0.3 — Scale & multi-upstream
+One proxy fronting N MCP servers + central tool registry + per-tool policy-as-code (YAML rules an operator can edit without touching Python) + observability beyond stderr (Cloud Logging / a queryable audit store). Turns the demo into a fleet gateway. **Blocked on v0.2 credibility work** — multi-upstream policy is only credible if the badges it emits are independently verifiable (#31) and its findings flow to consumers (#32).
+
+### v1.0 — First real user
+Hosted Docker image, 1-page "plug me in" doc, issue-tracker label for production bugs, feedback cadence. Find one friendly team running real MCP servers and ship Tripwire into their pipeline. Real usage drives the v1.0 → v1.x backlog more than any internal planning round.
+
+### Permanently P2 / Won't (without a strong external pull)
+- Sigstore / Rekor anchoring (interesting but premature without users asking).
+- Multi-framework support beyond MCP (LangChain, Cursor, raw tools) — would dilute the wedge.
+- Hosted dashboard / Tripwire-the-SaaS — explicitly the wrong shape; Tripwire is plumbing other people host.
+
+---
+
+## Process notes carried over from capstone
+
+- Every commit on a feature branch, every PR closes (or refs) at least one issue.
+- The `no-commit-to-main` pre-commit hook (PR #21) refuses direct commits to `main`.
+- `make check` must be green before any PR.
+- Hard Rule #6 — never invent metrics. Every quoted number in any artefact traces to a `make` command run.
+- See [AGENTS.md](AGENTS.md) for the full ruleset.
