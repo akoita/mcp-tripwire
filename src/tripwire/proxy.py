@@ -252,3 +252,46 @@ def _log(stream: IO[str], action: str, tool: object, reason: str) -> None:
         json.dumps({"tripwire": {"action": action, "tool": tool, "reason": reason}}) + "\n"
     )
     stream.flush()
+
+
+# ---------------------------------------------------------------- SSE variant
+# RFC-0004 / #33. SseTripwireProxy is a thin subclass of StdioTripwireProxy
+# that drives the same `bridge()` pump with adapter streams instead of stdio
+# pipes. All guard logic + state lives in the parent — only the entry point
+# (and the implicit contract on stream-shaped objects) is new. The actual
+# SSE/HTTP transport work lives in `app/sse_adapter.py` (Decision #5).
+
+
+class SseTripwireProxy(StdioTripwireProxy):
+    """Policy enforcement over SSE/HTTP transport. Same guards as the stdio
+    variant; the only difference is the shape of the streams handed to
+    ``bridge()``.
+
+    Callers construct adapter streams (``SseClientStream`` for the inbound
+    client connection, ``SseServerStream`` for the upstream MCP server) in
+    ``app/sse_adapter.py`` and pass them in. Both must expose a ``reader``
+    that's an ``asyncio.StreamReader`` and a ``writer`` with the minimal
+    ``write / drain / close / is_closing`` shape the bridge uses.
+    """
+
+    async def bridge_sse(
+        self,
+        *,
+        client_stream,
+        server_stream,
+        log: IO[str] | None = None,
+    ) -> None:
+        """Drive the inherited ``bridge()`` over the adapter streams.
+
+        Both ``client_stream`` and ``server_stream`` are duck-typed to
+        ``app.sse_adapter.SseClientStream`` / ``SseServerStream``; the import
+        is NOT done here so this module stays free of any ``app`` /
+        ``httpx`` reference (Hard Rule #2).
+        """
+        await self.bridge(
+            client_reader=client_stream.reader,
+            client_writer=client_stream.writer,
+            server_reader=server_stream.reader,
+            server_writer=server_stream.writer,
+            log=log if log is not None else sys.stderr,
+        )
