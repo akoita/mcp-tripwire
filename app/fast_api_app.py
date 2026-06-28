@@ -38,7 +38,7 @@ except ImportError as exc:  # pragma: no cover - only at deploy time
 from tripwire import attestation  # noqa: E402
 from tripwire.agents.scanner_agent import scan_tool_descriptor  # noqa: E402
 from tripwire.corpus import load_corpus, run_corpus  # noqa: E402
-from tripwire.detection import Finding, Severity, scan_tool  # noqa: E402
+from tripwire.detection import scan_tool  # noqa: E402
 from tripwire.sarif import SarifInput, from_corpus_rows, to_sarif  # noqa: E402
 
 app = FastAPI(
@@ -64,10 +64,6 @@ def _wants_sarif(request: Request) -> bool:
     """
     accept = request.headers.get("accept", "")
     return SARIF_MIME in accept
-
-
-def _sev_from_str(s: str) -> Severity:
-    return {str(sev): sev for sev in Severity}.get(s, Severity.MEDIUM)
 
 
 def _signing_key() -> str:
@@ -163,8 +159,3 @@ def eval_corpus(request: Request):
         "passed": passed,
         "rows": result.rows,
     }
-
-
-# Silence ruff's "unused import" for the symbols we keep around for
-# downstream callers that import them through this module's namespace.
-_ = (Finding, _sev_from_str)

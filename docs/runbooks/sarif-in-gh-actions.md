@@ -6,6 +6,8 @@
 
 In any GitHub repo whose CI you want gated by Tripwire:
 
+> **Install source.** Until `mcp-tripwire` is published to PyPI (tracked in [STATUS.md](../STATUS.md)) the canonical install is from GitHub: `pip install git+https://github.com/akoita/mcp-tripwire@main` (swap `@main` for a tag like `@v0.2.0` once tagged releases ship). The plain `pip install mcp-tripwire` form will work the moment the package is published — the rest of the workflow is unchanged.
+
 ```yaml
 # .github/workflows/tripwire-scan.yml
 name: Tripwire scan
@@ -20,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - run: pip install mcp-tripwire
+      - run: pip install git+https://github.com/akoita/mcp-tripwire@main
       - run: tripwire scan ./tools.json --sarif > tripwire.sarif
         continue-on-error: true   # so the upload step still runs on findings
       - uses: github/codeql-action/upload-sarif@v3
