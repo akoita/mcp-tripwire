@@ -34,10 +34,16 @@ class _QueueWriter:
     side POSTs each to ``/messages``.
     """
 
-    def __init__(self, queue: asyncio.Queue) -> None:
+    def __init__(self, queue: asyncio.Queue, *, on_full: callable | None = None) -> None:
         self._q = queue
         self._closed = False
         self._buf = b""
+        # Codex P2 round 2: bounded queues need a real backpressure escape.
+        # write() is sync (asyncio.StreamWriter shape), so we can't await;
+        # we DROP+terminate when the queue is full to avoid OOM. The owner
+        # passes `on_full` to convert a full queue into a session-terminal
+        # signal (cache-invalidate + EOF).
+        self._on_full = on_full
 
     def write(self, data: bytes) -> None:
         if self._closed:
@@ -46,8 +52,20 @@ class _QueueWriter:
         while b"\n" in self._buf:
             line, self._buf = self._buf.split(b"\n", 1)
             line = line.strip()
-            if line:
+            if not line:
+                continue
+            try:
                 self._q.put_nowait(line)
+            except asyncio.QueueFull:
+                # Bounded queue full → stall in the consumer. Convert into a
+                # terminal signal so the bridge stops feeding into a dead end.
+                self._closed = True
+                if self._on_full is not None:
+                    try:
+                        self._on_full()
+                    except Exception:  # noqa: BLE001, S110
+                        pass
+                return
 
     async def drain(self) -> None:
         # Backpressure is bounded by the queue's maxsize (unbounded by default).
@@ -67,6 +85,12 @@ class _QueueWriter:
         return self._closed
 
 
+# Bounded-queue size (Codex P2 round 2). 1024 in-flight frames per direction
+# is generous for MCP traffic; if a slow client or stalled upstream blows
+# through it, _QueueWriter treats it as a session-terminal signal.
+_MAX_QUEUE_FRAMES = 1024
+
+
 class SseClientStream:
     """Inbound side: one client connected over SSE/HTTP.
 
@@ -78,19 +102,34 @@ class SseClientStream:
 
     def __init__(self) -> None:
         self.reader: asyncio.StreamReader = asyncio.StreamReader()
-        self._outbound: asyncio.Queue = asyncio.Queue()
-        self.writer = _QueueWriter(self._outbound)
+        self._outbound: asyncio.Queue = asyncio.Queue(maxsize=_MAX_QUEUE_FRAMES)
+        # If the outbound queue fills (slow SSE consumer), terminate cleanly.
+        self.writer = _QueueWriter(self._outbound, on_full=self.close_inbound)
+        # Codex P2 round 2: track "closed" so a late POST can be rejected
+        # cleanly instead of hitting `feed_data after feed_eof` → AssertionError.
+        self._closed = False
 
-    def push_inbound(self, frame_bytes: bytes) -> None:
-        """Feed a single JSON-RPC frame (raw bytes, with or without trailing
-        newline) into the reader."""
+    def push_inbound(self, frame_bytes: bytes) -> bool:
+        """Feed a single JSON-RPC frame into the reader. Returns False if the
+        session is already closed (caller should respond 410)."""
+        if self._closed:
+            return False
         if not frame_bytes.endswith(b"\n"):
             frame_bytes = frame_bytes + b"\n"
         self.reader.feed_data(frame_bytes)
+        return True
 
     def close_inbound(self) -> None:
+        """Idempotent close — safe to call from POST-full path AND on_terminal."""
+        if self._closed:
+            return
+        self._closed = True
         self.reader.feed_eof()
         self.writer.close()
+
+    @property
+    def closed(self) -> bool:
+        return self._closed
 
     async def iter_outbound(self) -> AsyncIterator[bytes]:
         """Async iterator over outbound JSON-RPC lines for the SSE event stream.
@@ -136,9 +175,18 @@ class SseServerStream:
         self.reader: asyncio.StreamReader = asyncio.StreamReader()
         self._client = None
         self._sse_task: asyncio.Task | None = None
-        self._post_queue: asyncio.Queue = asyncio.Queue()
+        self._post_queue: asyncio.Queue = asyncio.Queue(maxsize=_MAX_QUEUE_FRAMES)
         self._post_task: asyncio.Task | None = None
-        self.writer = _QueueWriter(self._post_queue)
+        # MCP HTTP+SSE 2024-11-05 spec (Codex P1 round 2): the upstream
+        # advertises the POST URL via the first SSE `event: endpoint, data:
+        # <url>` frame. Real upstreams use session-scoped URLs like
+        # `/messages?sessionId=...`; hardcoding `/messages` made us
+        # interoperable only with naive fixtures. We capture the URL on the
+        # endpoint event and gate _post_loop on it being set.
+        self._post_url: str | None = None
+        self._post_url_ready: asyncio.Event = asyncio.Event()
+        # Stalled upstream POST path → bounded queue fills → treat as terminal.
+        self.writer = _QueueWriter(self._post_queue, on_full=self._on_post_queue_full)
         self.disconnected: bool = False
 
     async def __aenter__(self) -> SseServerStream:
@@ -187,19 +235,28 @@ class SseServerStream:
                     self._client, "GET", f"{self._url}/events", headers=self._headers
                 ) as es:
                     async for event in es.aiter_sse():
-                        if event.event != "message":
-                            continue
-                        # Each SSE 'data:' becomes one line into the reader.
-                        self.reader.feed_data((event.data + "\n").encode())
+                        if event.event == "endpoint":
+                            # MCP spec: this `data:` is the URL clients POST to
+                            # for this session. May be absolute or relative to
+                            # the SSE base. Resolve against the SSE URL.
+                            self._post_url = str(httpx.URL(f"{self._url}/events").join(event.data))
+                            self._post_url_ready.set()
+                        elif event.event == "message":
+                            # Each SSE `data:` becomes one line into the reader.
+                            self.reader.feed_data((event.data + "\n").encode())
+                        # Other event types (heartbeat, etc.) silently ignored.
                 # Clean end of stream — terminal.
                 break
             except asyncio.CancelledError:
                 raise
             except (httpx.HTTPError, OSError):
-                # The upstream just dropped. Even if we're about to reconnect,
-                # the cache must clear NOW — a tool approved pre-drop must be
-                # re-vetted via the fresh stream's tools/list.
+                # The upstream just dropped. Cache must clear NOW — a tool
+                # approved pre-drop must be re-vetted via the fresh stream's
+                # tools/list. Also reset the POST URL — the next stream will
+                # advertise its own (possibly different session-scoped) one.
                 self._notify_cache_invalidate()
+                self._post_url = None
+                self._post_url_ready.clear()
                 if attempt == 1:
                     continue
                 break
@@ -216,6 +273,14 @@ class SseServerStream:
         except Exception:  # noqa: BLE001, S110 - callback hygiene
             pass
 
+    def _on_post_queue_full(self) -> None:
+        """Bounded outbound POST queue filled — treat as terminal upstream issue
+        (same as a POST transport error). Avoids unbounded memory growth on a
+        stalled upstream while keeping the session-end shape consistent."""
+        self._notify_cache_invalidate()
+        self.reader.feed_eof()
+        self._notify_terminal()
+
     def _notify_terminal(self) -> None:
         """Fired once when the connection is over for good. Idempotent."""
         if self.disconnected:
@@ -229,10 +294,14 @@ class SseServerStream:
             pass
 
     async def _post_loop(self) -> None:
-        """Drain the outbound queue, POSTing each line to /messages. A transport
-        error on POST is treated as a terminal upstream issue (Codex review):
-        we cache-invalidate + signal terminal + EOF the reader so the bridge
-        stops accepting client frames into a dead session, instead of hanging.
+        """Drain the outbound queue, POSTing each line to the URL the upstream
+        advertised via its SSE ``endpoint`` event. Waits for that event before
+        the first POST — if the upstream never advertises one, _post_loop
+        blocks here until ``__aexit__`` cancels the task.
+
+        A transport error on POST is treated as terminal: cache-invalidate +
+        EOF + signal terminal so the bridge stops accepting client frames
+        into a dead session (instead of hanging).
         """
         import httpx
 
@@ -240,10 +309,12 @@ class SseServerStream:
             line = await self._post_queue.get()
             if line is None:
                 return
+            # Wait until the upstream tells us where to POST (MCP spec, Codex
+            # P1 round 2). Cancellation from __aexit__ surfaces as
+            # CancelledError, which the surrounding gather/__aexit__ handles.
+            await self._post_url_ready.wait()
             try:
-                await self._client.post(
-                    f"{self._url}/messages", content=line, headers=self._headers
-                )
+                await self._client.post(self._post_url, content=line, headers=self._headers)
             except (httpx.HTTPError, OSError):
                 self._notify_cache_invalidate()
                 self.reader.feed_eof()

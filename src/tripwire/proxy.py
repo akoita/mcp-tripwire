@@ -129,6 +129,9 @@ class StdioTripwireProxy:
         """
         # Pair request ids to methods so the s->c pump knows which response
         # to rewrite (only tools/list responses need result.tools mangling).
+        # Keyed by NORMALIZED id (str|None). Codex P1 round 2: an untrusted
+        # upstream could reply with `id: "1"` to a `id: 1` request and bypass
+        # the tools/list rewrite branch if we matched by raw object equality.
         pending_methods: dict[object, str] = {}
 
         async def pump_client_to_server() -> None:
@@ -176,7 +179,7 @@ class StdioTripwireProxy:
                             _log(log, decision.action.value, decision.tool, decision.reason)
                             continue
                     if req_id is not None and method:
-                        pending_methods[req_id] = method
+                        pending_methods[_normalize_id(req_id)] = method
                     server_writer.write((json.dumps(msg) + "\n").encode())
                     await server_writer.drain()
             except (asyncio.CancelledError, ConnectionResetError, BrokenPipeError):
@@ -194,7 +197,11 @@ class StdioTripwireProxy:
                         await client_writer.drain()
                         continue
                     req_id = msg.get("id")
-                    method = pending_methods.pop(req_id, None) if req_id is not None else None
+                    method = (
+                        pending_methods.pop(_normalize_id(req_id), None)
+                        if req_id is not None
+                        else None
+                    )
                     if method == "tools/list" and isinstance(msg.get("result"), dict):
                         tools = msg["result"].get("tools") or []
                         # Refresh the cache with what the server actually sent
@@ -240,6 +247,16 @@ def _try_parse(raw: bytes) -> dict | None:
     except json.JSONDecodeError:
         return None
     return parsed if isinstance(parsed, dict) else None
+
+
+def _normalize_id(req_id: object) -> str | None:
+    """Canonicalize a JSON-RPC id for routing. Per spec ids are
+    string|number|null; an untrusted upstream replying with a different-typed
+    id (``"1"`` vs ``1``) MUST NOT route around the tools/list rewrite branch
+    or any other id-keyed dispatch. None remains None."""
+    if req_id is None:
+        return None
+    return str(req_id)
 
 
 def _send(writer: asyncio.StreamWriter, msg: dict) -> None:

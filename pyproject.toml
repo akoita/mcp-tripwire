@@ -58,4 +58,4 @@ ignore = ["S101"]  # asserts are fine in tests
 [tool.pytest.ini_options]
 testpaths = ["tests/unit", "tests/integration"]
 addopts = "-q"
-pythonpath = ["src"]
+pythonpath = ["src", "."]  # `.` so `from app.fast_api_app import app` works without PYTHONPATH override (Codex round 2 caveat).

@@ -57,6 +57,13 @@ def build_app() -> FastAPI:
     @app.get("/events")
     async def events(request: Request) -> EventSourceResponse:
         async def stream():
+            # MCP HTTP+SSE 2024-11-05 spec (Codex P1 round 2): first frame
+            # is the `endpoint` event advertising the POST URL. Real
+            # upstreams may use session-scoped URLs (e.g.
+            # `/messages?sessionId=...`); the fixture stays simple with a
+            # relative `/messages` — the adapter resolves it against the
+            # SSE base URL.
+            yield {"event": "endpoint", "data": "/messages"}
             while True:
                 if await request.is_disconnected():
                     break
