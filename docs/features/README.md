@@ -63,9 +63,9 @@ Where the trust loop is reachable from. Same engine, different transport.
 
 | Feature | Status | RFC | Issue | Notes |
 |---|---|---|---|---|
-| [SARIF output for `scan` and `ci`](sarif-output.md) | 📝 design-locked | [RFC-0003](../rfc/RFC-0003-sarif-output.md) | [#32](https://github.com/akoita/mcp-tripwire/issues/32) | Findings flow into GitHub Code Scanning / GitLab SAST / any SARIF consumer with zero integration code. Lands first in v0.2 per the ordering decision. |
+| [SARIF output for `scan` and `ci`](sarif-output.md) | ✅ implemented | [RFC-0003](../rfc/RFC-0003-sarif-output.md) | [#32](https://github.com/akoita/mcp-tripwire/issues/32) | Findings flow into GitHub Code Scanning / GitLab SAST / any SARIF consumer with zero integration code. Operator path: [docs/runbooks/sarif-in-gh-actions.md](../runbooks/sarif-in-gh-actions.md). |
 | [Ed25519 third-party verifiable badges](ed25519-signing.md) | 📝 design-locked | [RFC-0002](../rfc/RFC-0002-ed25519-signing.md) | [#31](https://github.com/akoita/mcp-tripwire/issues/31) | Any verifier with the public key audits without trusting Tripwire. Makes the README's "portable, independently verifiable" claim literally true. |
-| [HTTP/SSE proxy transport](http-sse-proxy-transport.md) | 🗓 planned | RFC-0004 — not yet drafted | [#33](https://github.com/akoita/mcp-tripwire/issues/33) | Brokers MCP between a client and an SSE-transport upstream. Necessary for the v0.2 operator-path acceptance gate. |
+| [HTTP/SSE proxy transport](http-sse-proxy-transport.md) | 📝 design-locked | [RFC-0004](../rfc/RFC-0004-http-sse-proxy-transport.md) (review-requested) | [#33](https://github.com/akoita/mcp-tripwire/issues/33) | Brokers MCP between a client and an SSE-transport upstream. Necessary for the v0.2 operator-path acceptance gate. |
 
 ## Maintenance rule
 

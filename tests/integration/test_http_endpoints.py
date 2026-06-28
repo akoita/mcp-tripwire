@@ -118,6 +118,54 @@ def test_verify_malformed_badge():
     assert body["status"] == "invalid"
 
 
+# --- SARIF content negotiation (RFC-0003) ---------------------------------
+
+
+def test_scan_with_sarif_accept_returns_sarif():
+    resp = client.post(
+        "/scan",
+        json={"tool": _poisoned_tool()},
+        headers={"Accept": "application/sarif+json"},
+    )
+    assert resp.status_code == 200
+    assert "application/sarif+json" in resp.headers.get("content-type", "")
+    body = resp.json()
+    assert body["version"] == "2.1.0"
+    assert len(body["runs"][0]["results"]) >= 1
+    # Streamed inputs (HTTP body) get the synthetic URN.
+    uri = body["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["artifactLocation"][
+        "uri"
+    ]
+    assert uri == "urn:tripwire:input:http-body"
+
+
+def test_scan_default_accept_returns_existing_json_shape():
+    """Default Accept must not flip to SARIF — keeps backward-compat."""
+    resp = client.post("/scan", json={"tool": _poisoned_tool()})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "status" in body  # existing scan_tool_descriptor shape, NOT SARIF
+    assert "version" not in body
+
+
+def test_eval_with_sarif_accept_returns_sarif():
+    resp = client.get("/eval", headers={"Accept": "application/sarif+json"})
+    assert resp.status_code == 200
+    assert "application/sarif+json" in resp.headers.get("content-type", "")
+    body = resp.json()
+    assert body["version"] == "2.1.0"
+    # Per-case attribution on every result (RFC-0003 Codex finding #1).
+    for r in body["runs"][0]["results"]:
+        assert "tripwire_case" in r["properties"]
+
+
+def test_eval_default_accept_returns_existing_corpus_result_shape():
+    resp = client.get("/eval")
+    body = resp.json()
+    assert "attacks_total" in body
+    assert "version" not in body  # SARIF would have this
+
+
 # --- /eval ----------------------------------------------------------------
 
 
