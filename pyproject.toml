@@ -28,6 +28,10 @@ agent = [
 # (per RFC-0003). Lighter alternative to `sarif-tools` which pulled matplotlib
 # + 17 other packages; we only need shape validation, not chart rendering.
 dev = ["ruff>=0.6.0", "pytest>=8.0.0", "jsonschema>=4.0.0"]
+# Optional Ed25519 signing backend (RFC-0002 / #31). cryptography is the standard
+# Python crypto library and pulls only one transitive (`cffi`). Loaded lazily — a
+# base install without this extra still `import tripwire` cleanly.
+signing = ["cryptography>=42.0.0"]
 
 [project.scripts]
 tripwire = "tripwire.cli:main"

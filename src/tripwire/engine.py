@@ -4,6 +4,10 @@ scan → approve/reject → fingerprint → (later) detect drift → quarantine 
 
 The engine is the deterministic decision layer the proxy (E2) and the ADK agent
 layer (P1) both drive. It owns the registry of approved fingerprints and badges.
+
+Per RFC-0002 (#31), badge minting goes through a pluggable ``SigningBackend``
+rather than a raw key. Existing call sites that pass ``signing_key=KEY`` keep
+working — internally the engine wraps the key in ``HmacBackend``.
 """
 
 from __future__ import annotations
@@ -13,6 +17,7 @@ from enum import StrEnum
 
 from . import attestation
 from .detection import Finding, Severity, detect_drift, fingerprint, max_severity, scan_tool
+from .signing import HmacBackend, SigningBackend
 
 
 class Action(StrEnum):
@@ -47,10 +52,27 @@ class Decision:
 
 
 class TripwireEngine:
-    """Stateful trust gateway. One instance guards one MCP session/server set."""
+    """Stateful trust gateway. One instance guards one MCP session/server set.
 
-    def __init__(self, signing_key: str | bytes, block_at: Severity = Severity.HIGH) -> None:
-        self._key = signing_key
+    Constructor accepts a configured ``signing_backend`` (preferred) or a legacy
+    ``signing_key`` keyword (back-compat). Exactly one must be supplied.
+    """
+
+    def __init__(
+        self,
+        signing_backend: SigningBackend | None = None,
+        *,
+        signing_key: str | bytes | None = None,
+        block_at: Severity = Severity.HIGH,
+    ) -> None:
+        if signing_backend is not None and signing_key is not None:
+            raise TypeError("TripwireEngine: pass either signing_backend OR signing_key, not both")
+        if signing_backend is not None:
+            self._backend: SigningBackend = signing_backend
+        elif signing_key is not None:
+            self._backend = HmacBackend(signing_key)
+        else:
+            raise TypeError("TripwireEngine requires a signing_backend or signing_key")
         self._block_at = block_at
         self._approved: dict[str, str] = {}  # tool name -> approved fingerprint
         self._badges: dict[str, dict] = {}  # tool name -> trust badge
@@ -67,7 +89,7 @@ class TripwireEngine:
                 Action.BLOCK, f"refused approval: {worst} finding(s) detected", name, findings
             )
         fp = fingerprint(tool)
-        badge = attestation.issue_badge(name, fp, self._key, issued_at=issued_at)
+        badge = attestation.issue_badge(name, fp, self._backend, issued_at=issued_at)
         self._approved[name] = fp
         self._badges[name] = badge
         return Decision(Action.ALLOW, "approved and attested", name, findings, fp, badge)
@@ -99,4 +121,4 @@ class TripwireEngine:
         return self._badges.get(tool_name)
 
     def verify_badge(self, badge: dict) -> tuple[bool, str]:
-        return attestation.verify_badge(badge, self._key)
+        return attestation.verify_badge(badge, self._backend)

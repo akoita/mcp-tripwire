@@ -115,7 +115,7 @@ async def _proxied_session():
         asyncio.create_task(feed(client_out_q, client_out_reader)),
     ]
 
-    engine = TripwireEngine(os.environ.get("TRIPWIRE_SIGNING_KEY", "demo-only"))
+    engine = TripwireEngine(signing_key=os.environ.get("TRIPWIRE_SIGNING_KEY", "demo-only"))
     proxy = StdioTripwireProxy(engine)
     # Quiet the structured stderr log for the demo narrative; production users
     # can pass `log=sys.stderr` to see one JSON line per block/quarantine event.

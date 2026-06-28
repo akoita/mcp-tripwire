@@ -30,10 +30,11 @@ def _py_files(base: Path, exclude: tuple[str, ...] = ()) -> list[Path]:
     ]
 
 
-# Rule #2: the deterministic core stays dependency-free (agents/ is the only exception).
+# Rule #2: the deterministic core stays dependency-free.
+# agents/ and signing/ are the only exceptions (pluggable adapters gated by extras).
 def check_core_dependency_free() -> None:
     allowed = set(sys.stdlib_module_names) | {"tripwire"}
-    for path in _py_files(CORE, exclude=("agents",)):
+    for path in _py_files(CORE, exclude=("agents", "signing")):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         rel = path.relative_to(ROOT)
         for node in ast.walk(tree):
@@ -184,9 +185,58 @@ def check_features_catalog_consistent() -> None:
         )
 
 
+# Curated list of backend module names that pull a third-party import (e.g.
+# `cryptography`). Eager-importing any of these at module scope in
+# `attestation.py` would crash a base install without the relevant extra.
+# The HMAC backend is stdlib-only and is NOT on this list.
+_EXTRAS_GATED_BACKENDS = {"ed25519_backend"}
+
+
+# Rule #2 corollary: backends in agents/ and signing/ are pluggable adapters gated by
+# extras (`[agent]` / `[signing]`). The engine must NEVER eagerly import them at
+# module level — a base install with neither extra would crash on `import tripwire`.
+# This check parses src/tripwire/attestation.py and fails if it does
+# `from .signing import ...` or `import tripwire.signing[.x]` at module scope.
+def check_pluggable_backends_lazy_imported() -> None:
+    target = CORE / "attestation.py"
+    if not target.exists():
+        return  # engine moved/renamed; bigger problem than this check
+    tree = ast.parse(target.read_text(encoding="utf-8"), filename=str(target))
+
+    def _touches_lazy(dotted: str) -> bool:
+        return any(part in _EXTRAS_GATED_BACKENDS for part in dotted.split("."))
+
+    for node in tree.body:  # module-level only — function-body imports are fine
+        offending: str | None = None
+        if isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            if _touches_lazy(module):
+                offending = ("." * node.level) + module
+            else:
+                # e.g. `from .signing import ed25519_backend`
+                for alias in node.names:
+                    if alias.name in _EXTRAS_GATED_BACKENDS:
+                        prefix = ("." * node.level) + (module + "." if module else "")
+                        offending = prefix + alias.name
+                        break
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if _touches_lazy(alias.name):
+                    offending = alias.name
+                    break
+        if offending:
+            fail(
+                f"[#2-lazy] attestation.py eagerly imports '{offending}' at module "
+                f"scope. Move it inside the function body — a base install without "
+                f"the relevant extra (e.g. `[signing]`) must still `import tripwire` "
+                f"cleanly."
+            )
+
+
 def main() -> int:
     for check in (
         check_core_dependency_free,
+        check_pluggable_backends_lazy_imported,
         check_no_hardcoded_secrets,
         check_demo_safety,
         check_stubs_flagged,

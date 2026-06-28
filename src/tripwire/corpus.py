@@ -98,7 +98,7 @@ def run_corpus(cases: list[dict], *, signing_key: str = "ci-only") -> CorpusResu
     attacks_total = attacks_blocked = clean_total = false_positives = 0
     rows: list[dict] = []
     for case in cases:
-        engine = TripwireEngine(signing_key, block_at=Severity.HIGH)
+        engine = TripwireEngine(signing_key=signing_key, block_at=Severity.HIGH)
         base_decision = engine.approve(case["tool"])
         case_findings: list[Finding] = list(base_decision.findings)
         drift_from: str | None = None

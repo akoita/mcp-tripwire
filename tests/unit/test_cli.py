@@ -95,7 +95,7 @@ def test_scan_respects_no_color(tmp_path: Path):
 
 
 def test_verify_valid_badge_exit_zero(tmp_path: Path):
-    eng = TripwireEngine(KEY)
+    eng = TripwireEngine(signing_key=KEY)
     eng.approve(_clean_tool(), issued_at="2026-01-01T00:00:00+00:00")
     badge = eng.badge_for("get_weather")
     path = tmp_path / "badge.json"
@@ -106,7 +106,7 @@ def test_verify_valid_badge_exit_zero(tmp_path: Path):
 
 
 def test_verify_tampered_badge_exit_two(tmp_path: Path):
-    eng = TripwireEngine(KEY)
+    eng = TripwireEngine(signing_key=KEY)
     eng.approve(_clean_tool(), issued_at="2026-01-01T00:00:00+00:00")
     badge = dict(eng.badge_for("get_weather"))
     badge["fingerprint"] = "tampered" * 8  # swap the fingerprint, keep the sig

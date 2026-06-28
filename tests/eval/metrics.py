@@ -24,7 +24,7 @@ def detection_recall() -> float:
 
 def attestation_validity() -> float:
     """1.0 iff a freshly-issued badge verifies AND a tampered badge fails."""
-    eng = TripwireEngine("eval-key")
+    eng = TripwireEngine(signing_key="eval-key")
     d = eng.approve(
         {"name": "ok", "description": "benign", "inputSchema": {}},
         issued_at="2026-01-01T00:00:00+00:00",
