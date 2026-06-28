@@ -76,7 +76,7 @@ async def _run_session() -> tuple[list[dict], str]:
     feeder_in = asyncio.create_task(feed(client_in_q, client_in_reader))
     feeder_out = asyncio.create_task(feed(client_out_q, client_out_reader))
 
-    engine = TripwireEngine("k")
+    engine = TripwireEngine(signing_key="k")
     proxy = StdioTripwireProxy(engine)
     log_buf = io.StringIO()
     bridge_task = asyncio.create_task(

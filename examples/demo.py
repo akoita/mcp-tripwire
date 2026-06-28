@@ -49,7 +49,7 @@ def main() -> int:
 
     # --- B: WITH Tripwire ----------------------------------------------------
     rule("B) WITH Tripwire: the poisoned tool never gets approved")
-    engine = TripwireEngine(KEY)
+    engine = TripwireEngine(signing_key=KEY)
     decision = engine.approve(poisoned_tool())
     print(f"  decision: {decision.action.value} — {decision.reason}")
     for f in decision.findings:

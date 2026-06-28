@@ -86,7 +86,7 @@ def test_scan_rejects_missing_tool_body():
 
 def test_verify_valid_badge(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("TRIPWIRE_SIGNING_KEY", KEY)
-    eng = TripwireEngine(KEY)
+    eng = TripwireEngine(signing_key=KEY)
     eng.approve(_clean_tool(), issued_at="2026-01-01T00:00:00+00:00")
     badge = eng.badge_for("get_weather")
     resp = client.post("/verify", json={"badge": badge})
@@ -99,7 +99,7 @@ def test_verify_valid_badge(monkeypatch: pytest.MonkeyPatch):
 
 def test_verify_tampered_badge(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("TRIPWIRE_SIGNING_KEY", KEY)
-    eng = TripwireEngine(KEY)
+    eng = TripwireEngine(signing_key=KEY)
     eng.approve(_clean_tool(), issued_at="2026-01-01T00:00:00+00:00")
     badge = dict(eng.badge_for("get_weather"))
     badge["fingerprint"] = "tampered" * 8

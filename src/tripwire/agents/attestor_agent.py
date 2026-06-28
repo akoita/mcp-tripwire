@@ -47,7 +47,9 @@ def issue_if_clean(tool: dict) -> dict:
     Rule #3 — never hardcoded). If unset, a development placeholder is used
     and the resulting badge will not verify against a production key.
     """
-    engine = TripwireEngine(os.environ.get("TRIPWIRE_SIGNING_KEY", "dev-only-change-me"))
+    engine = TripwireEngine(
+        signing_key=os.environ.get("TRIPWIRE_SIGNING_KEY", "dev-only-change-me"),
+    )
     return engine.approve(tool).as_dict()
 
 
