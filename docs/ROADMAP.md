@@ -35,17 +35,23 @@ A future "post-capstone" section will land here once submission is actually done
 
 **Acceptance gate for the v0.2.0 tag:** an external operator path is reproducible end-to-end on a fresh clone — configure a non-fixture target MCP server, run Tripwire, get findings, verify the badge. One real consumer, not three internal tests in a trench coat.
 
+**Tracking page:** [milestone v0.2.0 on GitHub](https://github.com/akoita/mcp-tripwire/milestone/1) shows the live open/closed split. Don't trust this table over what the milestone says.
+
 ### Ordering — SARIF first
 
 SARIF is the fastest usefulness jump for the audience that matters (security teams already running SAST tooling). The badge alg is an internal detail of how Tripwire signs; SARIF describes findings regardless. So:
 
-| # | Issue | What | Why this order |
-|---|---|---|---|
-| 1st | [#32](https://github.com/akoita/mcp-tripwire/issues/32) | **SARIF output** for `scan` + `eval` | Lands findings in GitHub Code Scanning / GitLab SAST with zero integration code. Biggest single move toward "useful" because it meets security teams where they already work. The badge field in SARIF can stay HMAC initially. |
-| 2nd | [#31](https://github.com/akoita/mcp-tripwire/issues/31) | **Ed25519 signing** over HMAC | Once findings travel via SARIF, the badge metadata in those findings becomes a real-world artefact. Ed25519 turns the badge from "shared-secret HMAC" into something an arbitrary third party can verify with only the public key — the README's "portable, independently verifiable" claim, finally true. |
-| 3rd | [#33](https://github.com/akoita/mcp-tripwire/issues/33) | **HTTP/SSE MCP transport** in the proxy | Broadens the deployable surface to cloud-hosted MCP servers. Necessary for the external-integration acceptance gate above, since most non-fixture MCP servers worth pointing Tripwire at use SSE. |
+| # | Issue | RFC | Impl | What |
+|---|---|---|---|---|
+| 1st | [#32](https://github.com/akoita/mcp-tripwire/issues/32) | [RFC-0003](rfc/RFC-0003-sarif-output.md) ✅ accepted | ⬜ not started | **SARIF output** for `scan` + `eval`. Lands findings in GitHub Code Scanning / GitLab SAST with zero integration code. Biggest single move toward "useful" because it meets security teams where they already work. |
+| 2nd | [#31](https://github.com/akoita/mcp-tripwire/issues/31) | [RFC-0002](rfc/RFC-0002-ed25519-signing.md) ✅ accepted | ⬜ not started | **Ed25519 signing** over HMAC. Turns the badge SARIF is already carrying into something a third party can verify with only the public key — the README's "portable, independently verifiable" claim, finally true. |
+| 3rd | [#33](https://github.com/akoita/mcp-tripwire/issues/33) | RFC-0004 ⬜ not started | — | **HTTP/SSE MCP transport** in the proxy. Broadens the deployable surface to cloud-hosted MCP servers. Necessary for the external-integration acceptance gate, since most non-fixture MCP servers worth pointing Tripwire at use SSE. |
 
 Each piece gets a design RFC under [`docs/rfc/`](rfc/) before code. RFCs require human review; implementation PRs cannot land until the RFC merges. This is the **deliberate-pace** ground rule for v0.2.
+
+**Per-issue implementation pointer.** Each issue body (#31, #32, #33) has an "Implementation" section that links to its RFC's Day-N plan. Open the issue → click the link → see the next concrete step. The RFC's Day-N plan is the canonical to-do list for that piece, not a separate checklist (keeps one source of truth).
+
+**Lesson recorded** (from the audit that surfaced this gap): RFC PRs must use `Refs #N` not `Closes #N` in their bodies — GitHub auto-closes greedily on the keyword. Both #31 and #32 were auto-closed when their RFC-only PRs merged and had to be reopened; the convention is documented now so it doesn't recur.
 
 ### Exit criteria for the v0.2.0 tag
 
