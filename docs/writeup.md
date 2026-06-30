@@ -30,7 +30,7 @@ scan → approve / reject → fingerprint → monitor drift → quarantine rug-p
 Concretely:
 
 - **`detection.scan_tool(tool: dict)`** runs deterministic rules against the descriptor (instruction-override phrases, invisible / zero-width Unicode, homoglyph names, secret-exfil and credential-upload patterns, outbound URLs in metadata, hidden-from-user phrasing, etc.). Findings carry their OWASP MCP Top-10 category so they slot straight into existing AppSec workflows.
-- **`engine.approve(tool)`** either refuses the tool (HIGH+ finding present) or computes a canonical fingerprint and mints a signed **trust badge** — HMAC-SHA256 today, Ed25519 in the next pass.
+- **`engine.approve(tool)`** either refuses the tool (HIGH+ finding present) or computes a canonical fingerprint and mints a signed **trust badge** — HMAC-SHA256 by default, Ed25519 when the optional `[signing]` backend is configured.
 - **`engine.evaluate_call(tool)`** checks the live descriptor against the approved fingerprint on every call. Drift → **quarantine**. The same fingerprint check fires on every fresh `tools/list` too, so rug-pulls get caught even if the agent re-lists before calling.
 - **`attestation.verify_badge(badge, key)`** verifies the badge independently. The badge contains `{tool, fingerprint, status, issued_at, alg, sig}` and nothing else; verification needs only the public key. Tampering with any field breaks the signature.
 
@@ -38,7 +38,7 @@ The differentiator is the **portability of the trust evidence**. Three Tripwire 
 
 ## The proof moment
 
-The repo ships three demos, each its own `make` target — same trust loop, three transports:
+The repo ships four demos, each its own `make` target — same trust loop, multiple surfaces:
 
 ```
 make demo         # engine A/B: poisoned tool refused at approval, rug-pull quarantined,
@@ -46,6 +46,9 @@ make demo         # engine A/B: poisoned tool refused at approval, rug-pull quar
 make demo-proxy   # stdio bridge: spawns the vulnerable MCP server as a subprocess,
                   # client talks JSON-RPC, proxy strips poisoned tools at tools/list,
                   # short-circuits tools/call with JSON-RPC error -32001 on quarantine.
+make demo-proxy-sse
+                  # HTTP/SSE bridge: same poisoning strip + rug-pull quarantine,
+                  # but over the remote-MCP transport shape.
 make demo-adk     # ADK: Scanner finds 3 OWASP-tagged findings on the poisoned tool;
                   # Red-team enumerates 9 canonical probes; Attestor refuses the poisoned
                   # tool and signs the clean one. The LLM is the router, the engine decides.
@@ -72,7 +75,7 @@ The canary-secret discipline (Hard Rule #4 in [AGENTS.md](../AGENTS.md)) means n
 
 Two layers, per the Day-4 convention:
 
-**Layer 1 — deterministic `pytest`.** 41 tests across unit + integration: detection rules, engine state machine, attestation HMAC, corpus runner, CLI exit codes, the full stdio proxy bridge against a subprocess fixture, the ADK agent factories and tool shapes. The proxy bridge integration test spawns a real subprocess and exercises both proof moments (poisoned-stripped, rug-pull-quarantined) in 90 ms. Three ADK-gated tests skip cleanly when the `[agent]` extra isn't installed.
+**Layer 1 — deterministic `pytest`.** The default developer gate is `make check`: 75 passing tests and 46 optional-extra skips, plus `ruff` and guardrails. With ADK + Ed25519 extras installed, the full suite is 139 passing tests across detection rules, engine state machine, attestation HMAC/Ed25519, corpus runner, SARIF, CLI exit codes, HTTP endpoints, stdio proxy, HTTP/SSE proxy, and ADK agent surfaces.
 
 **Layer 2 — measured corpus (`make eval`).** Runs `tripwire.corpus.run_corpus` against [`corpus/attacks.jsonl`](../corpus/attacks.jsonl), which contains 8 poisoning cases (secret exfil, SSH credential lift, instruction override, hidden-from-user, invisible payload, credential upload, env leak, system-prompt leak) + 1 rug-pull case + 4 clean tools. Current scoreboard:
 
@@ -89,8 +92,8 @@ The non-deterministic eval datasets (`tool_poisoning/v1`, `schema_drift/v1`) and
 
 The project is structured around the course's "Factory Model": the **engineering is the harness** around the model. Three points:
 
-1. **Deterministic core stays dependency-free.** Every module under `src/tripwire/` (except `agents/`) is stdlib-only. Enforced by [`scripts/harness_guardrails.py`](../scripts/harness_guardrails.py), wired into `make check`, pre-commit, and CI. A future PR that tries to `pip install requests` in `engine.py` fails the gate.
-2. **Hard rules as code, not vibes.** [AGENTS.md](../AGENTS.md) lists nine hard rules — never commit to main, never log raw tool payloads, demos use canary only, tests are the contract. Rules #2 / #3 / #4 / #9 are machine-verified by the guardrails script; rule #7 (no commits to main) is enforced by a local pre-commit hook (private repo, GitHub branch protection requires Pro).
+1. **Deterministic core stays dependency-free.** Every module under `src/tripwire/` is stdlib-only except the explicitly optional `agents/` and `signing/` adapters. Enforced by [`scripts/harness_guardrails.py`](../scripts/harness_guardrails.py), wired into `make check`, pre-commit, and CI. A future PR that tries to `pip install requests` in `engine.py` fails the gate.
+2. **Hard rules as code, not vibes.** [AGENTS.md](../AGENTS.md) lists nine hard rules — never commit to main, never log raw tool payloads, demos use canary only, tests are the contract. Rules #2 / #3 / #4 / #9 are machine-verified by the guardrails script; rule #7 (no commits to main) is enforced by the local pre-commit hook.
 3. **Three-agent ADK layer that can't fabricate verdicts.** Scanner / Red-team / Attestor each wrap a deterministic core function as an ADK `FunctionTool`. The LLM provides routing and explanation. The Attestor's `issue_if_clean` tool is wrapped in `FunctionTool(require_confirmation=True)`, so badge minting is human-gated by the runtime — a model decision alone can never sign a badge.
 
 ## Related work and honest positioning
@@ -107,23 +110,23 @@ Tripwire's contribution is the narrower wedge:
 
 What's implemented today (everything has a backing PR on `main` and a test):
 
-- Deterministic scanner, OWASP map, fingerprinting, trust-loop engine, HMAC attestation.
-- `tripwire` CLI (`scan` with OWASP grouping, `verify` with three exit-code semantics for valid/tampered/malformed, `ci --json`).
+- Deterministic scanner, OWASP map, fingerprinting, trust-loop engine, HMAC attestation, and Ed25519 public-key verification.
+- `tripwire` CLI (`scan` with OWASP grouping, `verify` with three exit-code semantics for valid/tampered/malformed, `verify --pub`, `key gen`, `key pub`, `ci --json`, `--sarif`).
 - Real transparent stdio MCP proxy bridge with `tools/list` rewrite and `tools/call` short-circuit ([RFC-0001](rfc/RFC-0001-e2-stdio-proxy-bridge.md)).
+- HTTP gateway for `/scan`, `/verify`, `/eval`, `/healthz`, plus the transparent HTTP/SSE MCP mount at `/mcp/sse/*` ([RFC-0004](rfc/RFC-0004-http-sse-proxy-transport.md)).
 - Attack corpus runner with both approval-time and drift cases (9/9 blocked).
 - ADK Scanner / Red-team / Attestor + coordinator (`app/agent.py`) — playground-ready.
 
 What's deliberately P1 / planned:
 
-- Cloud Run deploy. Scaffolding (Dockerfile, FastAPI shell, `agents-cli-manifest.yaml`) is present; the HTTP gateway mount is the next mile.
-- Ed25519 swap for the badge signing scheme.
+- Cloud Run deploy. Scaffolding (Dockerfile, FastAPI app, `agents-cli-manifest.yaml`) is present; the documented local Docker path is the submission fallback if GCP credentials are not available.
 - LLM-driven probe mutation in the Red-team agent (the full Quality Flywheel).
 - Full A2A exposure of the gateway.
 
 What we explicitly cut to protect the video / writeup:
 
 - A standalone dashboard. The CLI + `make eval` JSON output cover the same surface for now.
-- A real public-key infrastructure for the badges. HMAC with a shared secret is sufficient to demonstrate the tamper-evident property; Ed25519 follows.
+- A real public-key infrastructure for the badges. Ed25519 proves independent verification; production key rotation, identity binding, and transparency-log anchoring stay out of scope.
 
 ## Operational discipline
 
@@ -132,8 +135,8 @@ A note on how the project was built, because it's the course's whole point. Ever
 Quality gates run at three layers:
 
 1. **Local** — pre-commit (`ruff` lint+format, private-key detect, large-file block, harness guardrails, no-commit-to-main).
-2. **Pre-PR** — `make check` (lint + 41 tests + guardrails).
-3. **CI** — `.github/workflows/{ci,security,ai-review}.yml` ready to run; gated by GitHub Actions billing on the private repo (will flip on at public-visibility for judging).
+2. **Pre-PR** — `make check` (lint + default test suite + guardrails).
+3. **CI** — `.github/workflows/{ci,security,ai-review}.yml` are present. The repo is public for judging; local gates remain the authoritative pre-submit proof until the latest workflow run is observed green.
 
 ## Try it yourself
 
@@ -141,6 +144,7 @@ Quality gates run at three layers:
 git clone https://github.com/akoita/mcp-tripwire
 cd mcp-tripwire
 make check && make demo && make demo-proxy && make eval
+make demo-proxy-sse
 # For the ADK demo (heavier deps, ~50 transitive packages):
 uv sync --extra agent && make demo-adk
 ```

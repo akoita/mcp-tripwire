@@ -9,6 +9,7 @@ A scriptable command-line surface for the trust loop:
 - **`tripwire scan <manifest.json>`** — read a tool descriptor (or a `{"tools": [...]}` manifest), emit findings grouped by OWASP MCP category, exit 1 on HIGH+ findings so CI can gate on it.
 - **`tripwire verify <badge.json>`** — re-check a stored badge. Three distinct exit codes (0 valid / 2 tampered / 3 malformed) so wrapping scripts can tell *"this badge says NO"* from *"you gave me garbage"*.
 - **`tripwire ci [--corpus PATH] [--json|--sarif]`** — run the full attack corpus, print the headline (`N/M attacks blocked · 0 FP on 4 clean tools`), exit 1 if anything regressed.
+- **`tripwire key gen` / `tripwire key pub`** — generate an Ed25519 private key and derive the matching public key for independently verifiable badges.
 
 CI pipelines plug it in with one line; humans get readable output; agents get machine-parseable `--json`, and security tools get SARIF via `--sarif`.
 
@@ -26,11 +27,17 @@ The CLI is `src/tripwire/cli.py` (entrypoint registered as `tripwire` in `pyproj
 |---|---|---|---|
 | `scan` | `tripwire.detection.scan_tool` | OWASP-grouped human text (colored if TTY) or SARIF | 0 clean / 1 HIGH+ findings |
 | `verify` | `tripwire.attestation.verify_badge` | one-line VALID / TAMPERED / INVALID | 0 / 2 / 3 |
+| `key gen` / `key pub` | `tripwire.signing.Ed25519Backend` | PEM private/public keys | 0 success / 1 key lifecycle error |
 | `ci` | `tripwire.corpus.run_corpus` | per-case ✓/✗ + summary, `--json`, or `--sarif` | 0 pass / 1 fail |
 
 ANSI colors are gated on `_use_color()` — silenced when `NO_COLOR` env is set or stdout isn't a TTY (per [no-color.org](https://no-color.org/)). No new dep; stdlib ANSI only.
 
-`tripwire verify` requires `TRIPWIRE_SIGNING_KEY`; if the env var is missing, the command exits malformed/invalid (`3`) instead of verifying against a placeholder key. `tripwire ci` is measurement-only and uses the inert `ci-only` key unless the env var is provided.
+`tripwire verify` supports both signing paths:
+
+- HMAC badges require `TRIPWIRE_SIGNING_KEY`; if the env var is missing, the command exits malformed/invalid (`3`) instead of verifying against a placeholder key.
+- Ed25519 badges use `tripwire verify --pub <public.pem> <badge.json>` and require the `[signing]` extra.
+
+`tripwire ci` is measurement-only and uses the inert `ci-only` key unless the env var is provided.
 
 ## Contract
 
@@ -41,6 +48,12 @@ tripwire scan <manifest.json>
 tripwire verify <badge.json>
 # stdout: one-line VALID / TAMPERED / INVALID + reason
 # exit:   0 valid · 2 signature mismatch · 3 malformed (cannot even check)
+
+tripwire key gen [--out tripwire-private.pem] [--force]
+# stdout: public key PEM; stderr: private-key path; exit 0/1
+
+tripwire key pub --in tripwire-private.pem
+# stdout: public key PEM; exit 0/1
 
 tripwire ci [--corpus PATH] [--json]
 # default: per-case lines + summary, exit 0/1
@@ -58,6 +71,7 @@ Exit-code constants are exported (`EXIT_OK`, `EXIT_FAIL`, `EXIT_BADGE_VALID`, `E
 | Installed | `pip install mcp-tripwire` → `tripwire …` on PATH |
 | In-repo | `uv run python -m tripwire.cli …` (Makefile demo targets use this form) |
 | CI snippet | `tripwire ci --json > result.json` then `jq` / consumer parses |
+| Ed25519 verifier | `tripwire verify --pub tripwire-public.pem badge.json` |
 
 ## Verification
 
@@ -67,9 +81,9 @@ Exit-code constants are exported (`EXIT_OK`, `EXIT_FAIL`, `EXIT_BADGE_VALID`, `E
 ## Guarantees and limitations
 
 - **Deterministic** — same input, same output, same exit code.
-- **Stdlib-only handlers** — no third-party dep in the CLI path. `argparse` only.
+- **Stdlib-only default handlers** — HMAC scan / verify / ci use only the deterministic core. Ed25519 key commands lazily import the optional `[signing]` backend.
 - **No stateful session** — `scan` and `verify` are one-shot. Drift detection (which is stateful) lives in the proxy bridge or the corpus runner, not the CLI.
-- **No `tripwire key gen` yet** — Ed25519 key-management subcommands land with [#31](https://github.com/akoita/mcp-tripwire/issues/31) per [RFC-0002 §CLI](../rfc/RFC-0002-ed25519-signing.md#cli-surface).
+- **Private-key hygiene is local** — `tripwire key gen` writes the private key with mode `0600` and refuses overwrite without `--force`; operators still own storage, rotation, and distribution of the public key.
 - **`--sarif` emits findings, not clean-run proof.** Fully clean scans produce `results: []`; use `ci --json` when consumers need the complete pass/fail row set.
 
 ## Cross-references

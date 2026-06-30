@@ -1,39 +1,39 @@
 # MCP-Tripwire — Roadmap
 
-> **Current cut:** `v0.1.0-capstone` ([tag](https://github.com/akoita/mcp-tripwire/releases/tag/v0.1.0-capstone)) — the **capstone-ready cut** of the Kaggle Freestyle entry. Tagged 2026-06-28 as a code freeze for the submission window. The Kaggle deadline is 2026-07-06 PT; submission itself, video recording, and the optional Cloud Run push are still pending human action — see [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md).
-> **Now:** v0.2 planning — **Credibility & integration** — working under the deliberate-pace rule (RFC before code).
+> **Current cut:** `main` is the submission candidate; `v0.1.0-capstone` ([tag](https://github.com/akoita/mcp-tripwire/releases/tag/v0.1.0-capstone)) remains the historical Day-4 code-freeze anchor. The Kaggle deadline is 2026-07-06 PT; submission itself, video recording, and the optional Cloud Run push are still pending human action — see [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md).
+> **Now:** submission readiness after v0.2 — **Credibility & integration** (SARIF, Ed25519, HTTP/SSE) has landed; remaining work is packaging, video, and final validation.
 > **One-liner:** *"Can this agent keep trusting this tool during execution — and can I prove it?"*
 
-## Capstone-ready cut — `v0.1.0-capstone` (tagged 2026-06-28)
+## Submission candidate — `main`
 
-The submission-window code freeze. What's shipped in the tag:
+The current submission candidate builds on the `v0.1.0-capstone` code-freeze tag and the v0.2 credibility work. What's shipped on `main`:
 
 | Epic | What | Where |
 |---|---|---|
 | E1 Core | detection · engine · attestation · OWASP map · corpus runner · CLI | `src/tripwire/*.py` |
 | E2 Proxy bridge (stdio) | `tools/list` rewrite · `tools/call` drift quarantine · structured stderr log | `src/tripwire/proxy.py` ([RFC-0001](rfc/RFC-0001-e2-stdio-proxy-bridge.md)) |
 | E3 ADK multi-agent | Scanner / Red-team / Attestor + coordinator | `src/tripwire/agents/`, `app/agent.py` ([.agents-cli-spec.md](../.agents-cli-spec.md)) |
-| E4 Proof moments | three demos: engine A/B, stdio proxy, ADK pipeline | `examples/demo*.py`, `make demo*` |
+| E4 Proof moments | four demos: engine A/B, stdio proxy, ADK pipeline, HTTP/SSE proxy | `examples/demo*.py`, `make demo*` |
 | E6 Cloud Run | HTTP gateway (`/scan` `/verify` `/eval` `/healthz`), local Docker verified, deploy runbook | `app/fast_api_app.py`, [`docs/runbooks/deploy.md`](runbooks/deploy.md) |
 | E7 Submission | README final + Kaggle writeup + video script + dry-run checklist | `docs/{writeup,video-script,SUBMISSION_CHECKLIST}.md` |
 | Harness | hard rules machine-enforced; pre-commit no-commit-to-main; retro-PR'd direct-to-main history | [AGENTS.md](../AGENTS.md), `scripts/harness_guardrails.py`, `scripts/no_commit_to_main.sh` |
 
-Headline numbers at the tag: **41 tests pass**, **9/9 attacks blocked**, 0 false positives on 4 clean tools, deterministic core stdlib-only.
+Headline numbers on the submission candidate: **75 default tests pass / 46 optional-extra skips**, **139 tests pass with `[agent]` + `[signing]`**, **9/9 attacks blocked**, 0 false positives on 4 clean tools, deterministic core stdlib-only.
 
 **Still pending human action between now and 2026-07-06** (tracked in [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md) and as open issues):
 - [#11](https://github.com/akoita/mcp-tripwire/issues/11) record the 5-minute video.
 - [#9](https://github.com/akoita/mcp-tripwire/issues/9) push the Cloud Run deploy via `agents-cli deploy` (optional but greens the table).
-- [#13](https://github.com/akoita/mcp-tripwire/issues/13) flip repo visibility to public, paste writeup into Kaggle UI, click Submit.
+- [#13](https://github.com/akoita/mcp-tripwire/issues/13) final public dry run, paste writeup into Kaggle UI, click Submit.
 
 A future "post-capstone" section will land here once submission is actually done.
 
 ---
 
-## Next — v0.2 Credibility & integration
+## Completed — v0.2 Credibility & integration
 
 **Thesis.** Move from "capstone-ready demo" to "could be dropped into a real security pipeline today." Three pieces, **judged by one external integration**, not by better internal docs.
 
-**Acceptance gate for the v0.2.0 tag:** an external operator path is reproducible end-to-end on a fresh clone — configure a non-fixture target MCP server, run Tripwire, get findings, verify the badge. One real consumer, not three internal tests in a trench coat.
+**Acceptance gate for the v0.2.0 tag:** an external operator path is reproducible end-to-end on a fresh clone — configure a non-fixture target MCP server, run Tripwire, get findings, verify the badge. One real consumer, not three internal tests in a trench coat. The local Docker path is documented; Cloud Run remains optional/pending in [#9](https://github.com/akoita/mcp-tripwire/issues/9).
 
 **Tracking page:** [milestone v0.2.0 on GitHub](https://github.com/akoita/mcp-tripwire/milestone/1) shows the live open/closed split. Don't trust this table over what the milestone says.
 
@@ -47,7 +47,7 @@ SARIF is the fastest usefulness jump for the audience that matters (security tea
 | 2nd | [#31](https://github.com/akoita/mcp-tripwire/issues/31) | [RFC-0002](rfc/RFC-0002-ed25519-signing.md) ✅ accepted | ✅ done ([PR #44](https://github.com/akoita/mcp-tripwire/pull/44) + follow-up) | **Ed25519 signing** over HMAC. Turns the badge SARIF is already carrying into something a third party can verify with only the public key — the README's "portable, independently verifiable" claim, finally true. |
 | 3rd | [#33](https://github.com/akoita/mcp-tripwire/issues/33) | [RFC-0004](rfc/RFC-0004-http-sse-proxy-transport.md) ✅ accepted | ✅ done (PR #46 + follow-up) | **HTTP/SSE MCP transport** in the proxy. Broadens the deployable surface to cloud-hosted MCP servers. Necessary for the external-integration acceptance gate, since most non-fixture MCP servers worth pointing Tripwire at use SSE. |
 
-Each piece gets a design RFC under [`docs/rfc/`](rfc/) before code. RFCs require human review; implementation PRs cannot land until the RFC merges. This is the **deliberate-pace** ground rule for v0.2.
+Each piece got a design RFC under [`docs/rfc/`](rfc/) before code. RFCs required human review; implementation PRs did not land until the RFC merged. This was the **deliberate-pace** ground rule for v0.2.
 
 **Per-issue implementation pointer.** Each issue body (#31, #32, #33) has an "Implementation" section that links to its RFC's Day-N plan. Open the issue → click the link → see the next concrete step. The RFC's Day-N plan is the canonical to-do list for that piece, not a separate checklist (keeps one source of truth).
 

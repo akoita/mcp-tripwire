@@ -17,12 +17,12 @@ This is the **second piece** of v0.2 by ordering — lands after [SARIF](sarif-o
 - **LLM agent** that wants to hand a badge to a *different* agent without sharing keys.
 - **Compliance pipeline** consuming Tripwire badges as evidence in a regulated workflow.
 
-## When this lands
+## Implemented surfaces
 
 | Surface | What changes |
 |---|---|
-| `tripwire key gen --priv <path> --pub <path>` | New CLI subcommand — Ed25519 keypair as PEM, private mode 0o600, refuses overwrite without `--force`. |
-| `tripwire key pub --priv <path>` | New — print the matching public key without re-generating. |
+| `tripwire key gen --out <path>` | CLI subcommand — Ed25519 keypair as PEM, private mode 0o600, refuses overwrite without `--force`, prints the public key PEM on stdout. |
+| `tripwire key pub --in <path>` | Print the matching public key without re-generating. |
 | `tripwire verify <badge.json> [--pub <path>]` | Dispatches on the badge's `alg` field — HMAC keeps working; Ed25519 needs `--pub` (or `TRIPWIRE_PUBLIC_KEY_PATH`). |
 | `engine.approve()` | When `signing_backend` is Ed25519, emits badges with `alg: "Ed25519"` and base64-encoded sig. |
 | HTTP `/verify` | Same per-alg dispatch through `VerifyRegistry`. |
@@ -40,7 +40,7 @@ The full architecture, key formats, configuration table, test plan, and Day-N (~
 
 ## Status
 
-**Implemented** in [#31](https://github.com/akoita/mcp-tripwire/issues/31) — [PR #44](https://github.com/akoita/mcp-tripwire/pull/44) (slots 1-4: SSOT widening, `signing/` subpackage, `Ed25519Backend`, env-driven resolvers, alg-dispatcher) plus a follow-up PR landing the CLI (`tripwire key gen` / `tripwire key pub` / `tripwire verify --pub`) and the Ed25519 case on the FastAPI `/verify` endpoint.
+**Implemented** in [#31](https://github.com/akoita/mcp-tripwire/issues/31) — [PR #44](https://github.com/akoita/mcp-tripwire/pull/44) (slots 1-4: SSOT widening, `signing/` subpackage, `Ed25519Backend`, env-driven resolvers, alg-dispatcher) plus follow-up work landing the CLI (`tripwire key gen --out` / `tripwire key pub --in` / `tripwire verify --pub`) and the Ed25519 case on the FastAPI `/verify` endpoint.
 
 Wire format unchanged on the badge side; only the new `alg="Ed25519"` value and base64-encoded `sig` are added. HMAC stays the default — operators opt into Ed25519 by configuring `TRIPWIRE_PRIVATE_KEY_PATH` (sign) / `TRIPWIRE_PUBLIC_KEY_PATH` (verify) or by installing the `[signing]` extra (`pip install 'mcp-tripwire[signing]'`).
 

@@ -38,7 +38,7 @@ The core value Tripwire delivers to the agent: "can I trust this tool, and can I
 | Feature | Status | Audience | Where to use / test | Notes |
 |---|---|---|---|---|
 | [Tool descriptor scanning](descriptor-scanning.md) | ✅ implemented | LLM agent · CI · operator | `tripwire scan <manifest.json>` · POST `/scan` · ADK Scanner agent · `src/tripwire/detection.py` · tests/unit/test_detection.py | Deterministic stdlib-only ruleset: instruction-override, invisible/zero-width, homoglyph, exfil & credential patterns, outbound URLs in metadata. Findings carry an OWASP MCP id. |
-| [Signed trust badges (attestation)](signed-trust-badges.md) | 🟡 partial — HMAC done, Ed25519 design-locked | LLM agent · downstream auditor · CI | `tripwire verify <badge.json>` · POST `/verify` · `engine.approve()` · `src/tripwire/attestation.py` · ADK Attestor (with `require_confirmation=True`) | HMAC-SHA256 today (shared-secret verification). Ed25519 makes the badge ecosystem genuinely portable — accepted in [RFC-0002](../rfc/RFC-0002-ed25519-signing.md), implementation tracked in [#31](https://github.com/akoita/mcp-tripwire/issues/31). |
+| [Signed trust badges (attestation)](signed-trust-badges.md) | ✅ implemented | LLM agent · downstream auditor · CI | `tripwire verify <badge.json>` · `tripwire verify --pub <public.pem>` · POST `/verify` · `engine.approve()` · `src/tripwire/attestation.py` · ADK Attestor (with `require_confirmation=True`) | HMAC-SHA256 remains the zero-deps default; Ed25519 via `[signing]` makes badges independently verifiable with only the public key. |
 | [Drift quarantine (rug-pull defense)](drift-quarantine.md) | ✅ implemented | LLM agent · MCP gateway · CI | `engine.evaluate_call()` · stdio proxy `tools/call` short-circuit · `tripwire ci` corpus rug-pull case `d1` | An already-approved tool that mutates is caught both on the next `tools/call` AND on the next fresh `tools/list` (whichever the agent does first). |
 | [OWASP MCP Top-10 taxonomy](owasp-mcp-mapping.md) | ✅ implemented | Security team · downstream auditor · LLM agent | `src/tripwire/owasp.py` · every finding's `owasp` field · `tripwire scan` grouped output | MCP-01 through MCP-10 IDs + human titles. Lets findings travel into existing AppSec workflows without re-derivation. |
 
@@ -59,13 +59,13 @@ Where the trust loop is reachable from. Same engine, different transport.
 |---|---|---|---|---|
 | [Attack corpus + drift runner](attack-corpus-runner.md) | ✅ implemented | Operator · CI · LLM agent | `corpus/attacks.jsonl` · `src/tripwire/corpus.py` · `make eval` · `tripwire ci --json` · `tests/unit/test_corpus.py` | Real measured headline: **9/9 attacks blocked · 0 false-positive on 4 clean tools**. Rule #6 (never invent metrics) is enforced here. |
 
-## v0.2 — Credibility & integration (design-locked, implementation pending)
+## v0.2 — Credibility & integration
 
 | Feature | Status | RFC | Issue | Notes |
 |---|---|---|---|---|
 | [SARIF output for `scan` and `ci`](sarif-output.md) | ✅ implemented | [RFC-0003](../rfc/RFC-0003-sarif-output.md) | [#32](https://github.com/akoita/mcp-tripwire/issues/32) | Findings flow into GitHub Code Scanning / GitLab SAST / any SARIF consumer with zero integration code. Operator path: [docs/runbooks/sarif-in-gh-actions.md](../runbooks/sarif-in-gh-actions.md). |
-| [Ed25519 third-party verifiable badges](ed25519-signing.md) | 📝 design-locked | [RFC-0002](../rfc/RFC-0002-ed25519-signing.md) | [#31](https://github.com/akoita/mcp-tripwire/issues/31) | Any verifier with the public key audits without trusting Tripwire. Makes the README's "portable, independently verifiable" claim literally true. |
-| [HTTP/SSE proxy transport](http-sse-proxy-transport.md) | 📝 design-locked | [RFC-0004](../rfc/RFC-0004-http-sse-proxy-transport.md) (review-requested) | [#33](https://github.com/akoita/mcp-tripwire/issues/33) | Brokers MCP between a client and an SSE-transport upstream. Necessary for the v0.2 operator-path acceptance gate. |
+| [Ed25519 third-party verifiable badges](ed25519-signing.md) | ✅ implemented | [RFC-0002](../rfc/RFC-0002-ed25519-signing.md) | [#31](https://github.com/akoita/mcp-tripwire/issues/31) | Any verifier with the public key audits without trusting Tripwire. Makes the README's "portable, independently verifiable" claim literally true. |
+| [HTTP/SSE proxy transport](http-sse-proxy-transport.md) | ✅ implemented | [RFC-0004](../rfc/RFC-0004-http-sse-proxy-transport.md) | [#33](https://github.com/akoita/mcp-tripwire/issues/33) | Brokers MCP between a client and an SSE-transport upstream. Necessary for the v0.2 operator-path acceptance gate. |
 
 ## Maintenance rule
 
