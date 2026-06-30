@@ -54,6 +54,8 @@ flowchart TB
 
 In one line: **scan → approve → fingerprint → attest → monitor → quarantine on drift**, with the signed, tamper-evident badge as the part nobody else emits.
 
+> **Who guards the guardian?** Tripwire is built so you can *verify* its claims rather than trust the gateway. The trust anchor, threat model, assumptions, and roadmap are in [Trust model, assumptions & limitations](#trust-model-assumptions--limitations).
+
 ## Architecture
 
 ```mermaid
@@ -162,6 +164,42 @@ tests/                unit · integration · eval/ (datasets + metrics + eval_co
 docs/                 ADRs, RFCs (incl. RFC-0001 stdio bridge), architecture, runbooks, plans
 scripts/              harness_guardrails.py (hard rules as code) · no_commit_to_main.sh
 ```
+
+## Trust model, assumptions & limitations
+
+A trust gateway has to answer the obvious question — *why trust the thing that decides what to trust?* Tripwire's answer is that it is built **not** to require trust in itself: every claim it makes is independently checkable, which pushes trust down to one well-understood anchor.
+
+**What you can verify yourself (no trust in Tripwire required):**
+
+- **A badge verifies offline.** Ed25519 verification needs only the public key — no callback to Tripwire ([`attestation.py`](src/tripwire/attestation.py)). Change one byte and verification fails.
+- **The verdict is a deterministic function, not an LLM opinion.** `approve` / `evaluate_call` in [`engine.py`](src/tripwire/engine.py) decide allow / block / quarantine; the agent layer only *explains* the verdict and cannot fabricate it ([`attestor_agent.py`](src/tripwire/agents/attestor_agent.py) just wraps `engine.approve`).
+- **The fingerprint is reproducible.** `sha256(canonicalize(tool))` ([`detection.py`](src/tripwire/detection.py)) — anyone can recompute it and confirm "unchanged since approval" without trusting us.
+- **The numbers are reproducible.** `make eval` re-derives `9/9 blocked · 0/4 false positives` from the committed corpus on your machine (Hard Rule #6 forbids invented metrics).
+
+**The one irreducible anchor is the signing key.** HMAC (default) is a *shared secret* — anyone holding it can forge a badge, so it is demo-grade only. Ed25519 (`[signing]` extra) is the real anchor: private signer, public verifier. Trust ultimately bottoms out at **key custody and public-key distribution** — which is exactly where it should rest, not in a running service.
+
+### Assumptions / hypotheses (where the approach holds)
+
+1. **Trust flows through the manifest.** Tripwire guards the declared schema/description surface. An attack that bypasses the manifest — e.g. a tool returning malicious *content at runtime* to steer the agent — is out of scope for schema-integrity enforcement.
+2. **Integrity ≠ goodness (trust-on-first-use).** The fingerprint pins *whatever was approved*. Drift detection proves *unchanged since approval*, not *safe* — if the first approval trusted an already-malicious tool the scanner missed, drift will not catch it.
+3. **Detection is heuristic.** It catches the modeled OWASP MCP classes (poisoning, prompt injection, invisible-unicode, homoglyph). A novel payload outside the corpus can be a false negative — hence **no novelty claim on scanning**.
+4. **The gateway is in the path and honest.** You trust the proxy process not to tamper in real time — mitigated by a small, stdlib-only, auditable core that never logs raw payloads, but it remains an assumption.
+5. **Manifests are meant to be stable.** Legitimately dynamic tool catalogs will trip drift and require re-approval — correct by design, but a real UX cost worth naming.
+
+### Where it helps most — and least
+
+- **Most useful:** long-running agents; multi-tenant or shared tool registries; audit and compliance ("prove weeks later exactly what was approved"); supply-chain-sensitive or cross-org tool sharing, where portable badges verify without the issuer in the loop.
+- **Least useful:** single-shot scripts over one fixed, already-trusted local tool; content-level prompt injection that never touches the schema; and intentionally fluid tool catalogs.
+
+### Roadmap — where this goes next
+
+- **Key management as a first-class concern:** KMS / Secret Manager integration, key-rotation windows, and transparency-log / Sigstore-style anchoring so verification stops depending on out-of-band key sharing.
+- **From first-seen to publisher trust:** bind badges to a publisher signature so *goodness* can be asserted by a trusted issuer — directly closing the trust-on-first-use gap.
+- **Beyond the schema:** runtime tool-*output* inspection for the injection-via-content class, plus policy-as-code for approval decisions.
+- **Deeper detection:** semantic / model-assisted manifest analysis (with the deterministic verdict still authoritative) and a community-grown attack corpus.
+- **Operational trust:** badge TTL / expiry, revocation lists, and multi-signer / quorum attestation.
+
+Full write-up, including the threat-model table: [`docs/TRUST_MODEL.md`](docs/TRUST_MODEL.md).
 
 ## Related work (honest positioning)
 
