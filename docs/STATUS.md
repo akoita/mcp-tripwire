@@ -22,7 +22,7 @@ _Older milestones:_ Day 3 — CLI polish (#6) + drift eval (#7); 32 tests at tha
 ## Open
 - Cloud Run remains optional/pending; local Docker and local demos are the current operator proof.
 - Video recording/upload is not done yet; writeup still has a video placeholder.
-- GitHub Actions are unblocked by public visibility, but local `make check` + `make eval` remain the authoritative pre-submit gate until the latest workflow run is observed green.
+- GitHub Actions are unblocked by public visibility; latest `main` CI and security workflow runs are green. Local `make check` + `make eval` remain the fastest pre-submit gate.
 
 ## Resolved
 - Signing scheme: HMAC now → Ed25519 — landed in [#31](https://github.com/akoita/mcp-tripwire/issues/31) per RFC-0002; HMAC remains the zero-deps default, Ed25519 ships behind `[signing]`.

@@ -26,8 +26,8 @@ If any of them regress before submission, **stop and fix** — judges can run th
 
 ## Repo state at submission
 
-- [ ] `main` branch contains every PR you intend judges to see — no unmerged work in feature branches.
-- [ ] Last commit on `main` is the submission refresh merge commit, not a bot or stale auto-merge.
+- [x] `main` branch contains every PR you intend judges to see — no unmerged work in feature branches.
+- [x] Last commit on `main` is a submission-readiness merge commit, not a bot or stale auto-merge.
 - [x] Backup tags `backup/pre-retro-pr` and `v0.1.0-capstone` still present in origin.
 - [x] No secret material has ever been pushed: `git log --all --full-history -- '.env' '*.key' '*.pem'` returns empty.
 - [x] Repo visibility is **public** (Kaggle judges can clone): `gh repo view akoita/mcp-tripwire --json isPrivate,visibility` reports `PUBLIC`.
