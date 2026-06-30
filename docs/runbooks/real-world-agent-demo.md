@@ -24,6 +24,15 @@ Prerequisites:
 npx -y @playwright/mcp@latest install-browser chrome-for-testing
 ```
 
+  This step is required: the demo launches Playwright MCP with `--browser
+  chromium` and reports a missing binary instead of auto-downloading one. The
+  command prints `WARNING: It looks like you are running 'npx playwright install'
+  without first installing your project's dependencies` — that warning is
+  **expected and harmless** here. `npx -y` fetches `@playwright/mcp` for a single
+  run, so there is no project `node_modules` to install against; the browser
+  still downloads (or is confirmed already cached). `chrome-for-testing` is
+  Playwright's alias for the `chromium` build the demo uses.
+
 Run:
 
 ```bash
