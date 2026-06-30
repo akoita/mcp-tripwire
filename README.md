@@ -13,7 +13,7 @@ Built for the Kaggle **AI Agents Intensive Vibe Coding Capstone** (Freestyle tra
 | False positives on clean tools | **0 / 4** |
 | Tests (unit + integration) | **75 passed / 46 skipped** with default `[dev]`; **139 passed** with `[agent]` + `[signing]` extras |
 | Deterministic core dependencies | **stdlib only** (verified by `scripts/harness_guardrails.py`) |
-| Demos (each its own `make` target) | `demo` · `demo-proxy` · `demo-adk` · `demo-proxy-sse` |
+| Demos (each its own `make` target) | `demo` · `demo-proxy` · `demo-adk` · `demo-proxy-sse` · `demo-real-mcp` |
 
 ---
 
@@ -75,7 +75,7 @@ Implementation status:
 | Deterministic scanner + OWASP mapping | ✅ implemented | [`src/tripwire/detection.py`](src/tripwire/detection.py), [`owasp.py`](src/tripwire/owasp.py) |
 | Trust loop engine (fingerprint · drift · attest) | ✅ implemented | [`src/tripwire/engine.py`](src/tripwire/engine.py), [`attestation.py`](src/tripwire/attestation.py) |
 | `tripwire` CLI (`scan` / `verify` / `ci`) | ✅ implemented | [`src/tripwire/cli.py`](src/tripwire/cli.py) — grouped OWASP output, exit-code semantics, `--json` |
-| Transparent stdio MCP proxy bridge (E2) | ✅ implemented | [`src/tripwire/proxy.py`](src/tripwire/proxy.py) — design in [RFC-0001](docs/rfc/RFC-0001-e2-stdio-proxy-bridge.md) |
+| Transparent stdio MCP proxy bridge (E2) | ✅ implemented | [`src/tripwire/proxy.py`](src/tripwire/proxy.py) — design in [RFC-0001](docs/rfc/RFC-0001-e2-stdio-proxy-bridge.md); real Playwright MCP proof via `make demo-real-mcp` |
 | Attack corpus runner (incl. drift case) | ✅ implemented | [`src/tripwire/corpus.py`](src/tripwire/corpus.py), [`corpus/attacks.jsonl`](corpus/attacks.jsonl) |
 | ADK Scanner / Red-team / Attestor + coordinator | ✅ implemented | [`src/tripwire/agents/`](src/tripwire/agents/), [`app/agent.py`](app/agent.py) — spec in [.agents-cli-spec.md](.agents-cli-spec.md) |
 | HTTP gateway endpoints (`/scan` · `/verify` · `/eval` · `/healthz`) | ✅ implemented | [`app/fast_api_app.py`](app/fast_api_app.py) — same verdict shapes as the CLI; SARIF via `Accept: application/sarif+json` |
@@ -91,11 +91,12 @@ Implementation status:
 # One-time bootstrap (uv ≥ 0.5; installs ruff + pytest)
 make check                 # lint + 75 default tests + harness guardrails
 
-# The four demos — each a different face of the same trust loop
+# The five demos — each a different face of the same trust loop
 make demo                  # engine-level: approve / evaluate_call / verify_badge (no transport)
 make demo-proxy            # stdio bridge: spawns the vulnerable MCP server, intercepts JSON-RPC
 make demo-adk              # ADK multi-agent: Scanner / Red-team / Attestor (requires `[agent]` extra)
 make demo-proxy-sse        # HTTP+SSE bridge: hosted-MCP transport proof (requires `[agent]` extra)
+make demo-real-mcp         # real upstream: Tripwire fronts Microsoft Playwright MCP via npx
 
 # Headline measurement (real number, sourced from run_corpus — Hard Rule #6)
 make eval                  # → "9/9 attacks blocked · 0 false-positive(s) on 4 clean tool(s)"
@@ -138,7 +139,7 @@ The LLM is the **explainer and router**; the **verdict** always comes from the d
 ```
 src/tripwire/         deterministic core (stdlib-only) + optional ADK agents/
 app/                  agents-cli / Cloud Run shell (FastAPI + ADK root_agent)
-examples/             demo.py · demo_proxy.py · demo_adk.py · vulnerable_mcp_server.py
+examples/             demo.py · demo_proxy.py · demo_proxy_sse.py · demo_real_mcp_playwright.py
 corpus/               MCPTox-style attack corpus (real, measured — 9 attacks + 4 clean)
 tests/                unit · integration · eval/ (datasets + metrics + eval_config.yaml)
 .agents/skills/       Agent Skills (SKILL.md) — symlinked into .claude & .gemini
@@ -155,6 +156,10 @@ Tripwire's contribution is the narrower, sharper wedge:
 - **Continuous schema integrity** — the same fingerprint enforced at approval is re-checked on every call AND on every re-list, so post-approval mutation can't slip through whether the agent sees it at call time or via a fresh `tools/list`.
 - **Portable, independently-verifiable attestations** — every approved tool carries a signed badge. With the `[signing]` extra (Ed25519), verification needs only the public key — no shared secret, no callback to Tripwire. HMAC is the default for zero-deps demos.
 - **Mapped to OWASP MCP Top 10** so findings travel cleanly into existing AppSec workflows.
+
+For a non-fixture proof, run [`make demo-real-mcp`](docs/runbooks/real-world-agent-demo.md):
+Tripwire fronts Microsoft Playwright MCP, approves and badges its real browser
+tools, then lets `browser_navigate` reach a live webpage through the proxy.
 
 ## License
 

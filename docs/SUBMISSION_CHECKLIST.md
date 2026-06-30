@@ -13,6 +13,7 @@ Fresh-clone reproduction on a clean machine — `git clone` + `make` cycle:
 - [x] `make demo` → engine A/B + rug-pull + tamper proof — `Summary: poisoning blocked · rug-pull quarantined · attestation tamper-evident.`
 - [x] `make demo-proxy` → bridge intercepts JSON-RPC; rug-pulled call short-circuits with `JSON-RPC error -32001`.
 - [x] `make demo-proxy-sse` → HTTP/SSE bridge strips poisoned tool and quarantines rug-pull with `JSON-RPC error -32001`.
+- [x] `make demo-real-mcp` → Tripwire fronts Microsoft Playwright MCP, badges 23 real browser tools, and navigates to `https://example.com`.
 - [x] `make demo-adk` → three sections (Scanner / Red-team / Attestor); badge minted for clean tool, refused for poisoned.
 - [x] `make eval` → **`9/9 attacks blocked · 0 false-positive(s) on 4 clean tool(s)` · `CI PASS.`**
 

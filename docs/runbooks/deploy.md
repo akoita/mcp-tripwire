@@ -2,6 +2,8 @@
 
 > Two supported paths: **local Docker** (verified, anyone can run) and
 > **Cloud Run via `agents-cli deploy`** (staged, requires GCP creds).
+> For the real-MCP + Google Agent Platform demo path, see
+> [real-world-agent-demo.md](real-world-agent-demo.md).
 > The stdio MCP gateway (transparent client↔upstream bridge over HTTP/SSE)
 > is a separate, larger surface tracked as a follow-up.
 

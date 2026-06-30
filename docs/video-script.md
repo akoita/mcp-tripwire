@@ -14,11 +14,12 @@ make check                          >/dev/null
 uv sync --extra dev --extra agent --extra signing >/dev/null
 # Tabs you'll switch between:
 #   T1 — README on github.com (Mermaid diagram visible)
-#   T2 — terminal, prompt clean, ready for `make demo-proxy`
-#   T3 — terminal, prompt clean, ready for `make demo-proxy-sse`
-#   T4 — terminal, prompt clean, ready for `make demo-adk`
-#   T5 — terminal, prompt clean, ready for `make eval`
-#   T6 — VS Code on src/tripwire/proxy.py around the bridge() pump
+#   T2 — terminal, prompt clean, ready for `make demo-real-mcp`
+#   T3 — terminal, prompt clean, ready for `make demo-proxy`
+#   T4 — terminal, prompt clean, ready for `make demo-proxy-sse`
+#   T5 — terminal, prompt clean, ready for `make demo-adk`
+#   T6 — terminal, prompt clean, ready for `make eval`
+#   T7 — VS Code on src/tripwire/proxy.py around the bridge() pump
 ```
 
 Speak from the `Say:` lines verbatim or paraphrase, but **do not skip a Show**.
@@ -36,9 +37,28 @@ Speak from the `Say:` lines verbatim or paraphrase, but **do not skip a Show**.
 
 ---
 
-## 0:15 — 1:30 · Proof moment (`make demo-proxy`)
+## 0:15 — 1:05 · Real MCP proof (`make demo-real-mcp`)
 
 **Show:** terminal T2. Type and run:
+
+```bash
+make demo-real-mcp
+```
+
+**Say:**
+> This is not the fake attack fixture. This is Microsoft Playwright MCP,
+> started through `npx`, with real browser automation tools. Tripwire sits in
+> front, approves and badges the live tool catalog, then lets a real
+> `browser_navigate` call reach `example.com`.
+>
+> The point is adoption: useful MCPs still work. Tripwire is a trust gateway,
+> not a demo that only succeeds because the upstream was invented for it.
+
+---
+
+## 1:05 — 1:55 · Security proof moment (`make demo-proxy`)
+
+**Show:** terminal T3. Type and run:
 
 ```bash
 make demo-proxy
@@ -77,9 +97,9 @@ C) Rug pull: upstream mutates after approval; proxy quarantines
 
 ---
 
-## 1:30 — 2:05 · How the bridge does it
+## 1:55 — 2:25 · How the bridge does it
 
-**Show:** tab T6 (`src/tripwire/proxy.py`). Scroll to `bridge`, `guard_tools_list`,
+**Show:** tab T7 (`src/tripwire/proxy.py`). Scroll to `bridge`, `guard_tools_list`,
 or `guard_call`.
 
 **Say:**
@@ -95,9 +115,9 @@ or `guard_call`.
 
 ---
 
-## 2:05 — 2:35 · Hosted-MCP transport (`make demo-proxy-sse`)
+## 2:25 — 2:50 · Hosted-MCP transport (`make demo-proxy-sse`)
 
-**Show:** terminal T3:
+**Show:** terminal T4:
 
 ```bash
 make demo-proxy-sse
@@ -111,9 +131,9 @@ make demo-proxy-sse
 
 ---
 
-## 2:35 — 3:15 · The ADK layer
+## 2:50 — 3:25 · The ADK layer
 
-**Show:** terminal T4:
+**Show:** terminal T5:
 
 ```bash
 make demo-adk
@@ -136,9 +156,9 @@ Let it run. The output is three labelled sections — `1) Scanner`,
 
 ---
 
-## 3:15 — 3:55 · Measured evaluation
+## 3:25 — 4:00 · Measured evaluation
 
-**Show:** terminal T5:
+**Show:** terminal T6:
 
 ```bash
 make eval
@@ -162,7 +182,7 @@ CI PASS.
 
 ---
 
-## 3:55 — 4:35 · The harness story
+## 4:00 — 4:35 · The harness story
 
 **Show:** tab T1 (README on github.com). Scroll to the implementation-status
 table and let the viewer's eye take in the green checks.
@@ -187,8 +207,8 @@ table and let the viewer's eye take in the green checks.
 **Show:** title card or the README hero block.
 
 **Say:**
-> Three commands to reproduce the core: `git clone`, `make check`, `make
-> demo-proxy`. Add `make demo-proxy-sse` for the hosted-MCP transport and
+> Three commands to reproduce the useful path: `git clone`, `make check`,
+> `make demo-real-mcp`. Add `make demo-proxy` for the canary attack proof and
 > `make eval` for the scoreboard. Repo at github.com slash akoita slash
 > mcp-tripwire. Thanks for watching.
 
@@ -196,13 +216,13 @@ table and let the viewer's eye take in the green checks.
 
 ## Cuts to have ready if you run long
 
-- **Drop the `bridge()` source walk** (1:30–2:05) — the README's
+- **Drop the `bridge()` source walk** (1:55–2:25) — the README's
   implementation-status table covers the same ground.
 - **Skip `make demo-proxy-sse` live** and point at the README row instead —
   useful if the terminal output eats time.
 - **Replace `make demo-adk` with `make demo`** — engine A/B is faster to
   narrate than the multi-agent run.
-- **Skip the harness story** (3:55–4:35) — judges who care can read
+- **Skip the harness story** (4:00–4:35) — judges who care can read
   `AGENTS.md`.
 
 Each cut buys ~45 seconds. Recoverable target is 3:30 if needed.
@@ -210,6 +230,7 @@ Each cut buys ~45 seconds. Recoverable target is 3:30 if needed.
 ## Pre-flight checklist
 
 - [ ] `make check` green on the recording machine.
+- [ ] `make demo-real-mcp` runs. If the browser is missing, run `npx -y @playwright/mcp@latest install-browser chrome-for-testing`.
 - [ ] `make demo-proxy` runs in <5 seconds, output identical to the script.
 - [ ] `make demo-proxy-sse` runs (needs `[agent]` extra).
 - [ ] `make demo-adk` runs (needs `[agent]` extra).

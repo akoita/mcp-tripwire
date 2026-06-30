@@ -78,6 +78,7 @@ The structured stderr log emits one JSON line per block / quarantine event so an
 | Surface | How to reach it |
 |---|---|
 | `make demo-proxy` | `examples/demo_proxy.py` spawns `examples/vulnerable_mcp_server.py` through the bridge with in-memory pipes (no real stdio attach required). The "operator runbook" version of the proof moment. |
+| `make demo-real-mcp` | `examples/demo_real_mcp_playwright.py` starts Microsoft Playwright MCP through `npx`, routes it through Tripwire, badges the real browser tool catalog, and calls `browser_navigate` against `https://example.com`. |
 | Production | `python -m tripwire.proxy …` (CLI wrapper in scope for v0.3 multi-upstream). For now, library use: `await StdioTripwireProxy(engine).serve(["python", "my_mcp_server.py"])`. |
 | Tests | `proxy.bridge(...)` accepts in-memory streams, exercised by [`tests/integration/test_proxy_bridge.py`](../../tests/integration/test_proxy_bridge.py). |
 
@@ -86,6 +87,7 @@ The structured stderr log emits one JSON line per block / quarantine event so an
 - Integration: [`tests/integration/test_proxy_bridge.py`](../../tests/integration/test_proxy_bridge.py) — spawns the fake MCP server, exercises both proof moments (poisoned stripped, rug-pull quarantined), runs in ~90ms with no orphan subprocesses.
 - Integration (demo script): [`tests/integration/test_proxy_demo_script.py`](../../tests/integration/test_proxy_demo_script.py) — `make demo-proxy` exits 0 and prints the three labelled sections.
 - Manual: `make demo-proxy` reads like the video opening — section A (no proxy → poisoned visible), B (with proxy → stripped + badged), C (rug-pull → quarantine).
+- Manual real-upstream: `make demo-real-mcp` requires Node/npx and a Playwright browser install; it fronts a published MCP server and proves a real browser navigation through the proxy.
 
 ## Guarantees and limitations
 
