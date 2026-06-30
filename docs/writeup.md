@@ -38,9 +38,12 @@ The differentiator is the **portability of the trust evidence**. Three Tripwire 
 
 ## The proof moment
 
-The repo ships four demos, each its own `make` target — same trust loop, multiple surfaces:
+The repo ships five demos, each its own `make` target — same trust loop, multiple surfaces:
 
 ```
+make demo-real-mcp
+                  # real upstream: starts Microsoft Playwright MCP through npx,
+                  # badges 23 real browser tools, then navigates to example.com.
 make demo         # engine A/B: poisoned tool refused at approval, rug-pull quarantined,
                   # badge tamper-evident — all as direct Python calls.
 make demo-proxy   # stdio bridge: spawns the vulnerable MCP server as a subprocess,
@@ -54,7 +57,7 @@ make demo-adk     # ADK: Scanner finds 3 OWASP-tagged findings on the poisoned t
                   # tool and signs the clean one. The LLM is the router, the engine decides.
 ```
 
-A judge can run all three in under 30 seconds:
+A judge can run the core proof targets quickly:
 
 ```
 $ make demo-proxy
@@ -70,6 +73,11 @@ C) Rug pull: upstream mutates after approval; proxy quarantines
 ```
 
 The canary-secret discipline (Hard Rule #4 in [AGENTS.md](../AGENTS.md)) means none of the demos ever read a real credential — they leak a labelled `CANARY-do-not-exfiltrate-0000` into a local in-memory sink, and the proof is that the sink stays empty.
+
+The real-MCP demo is deliberately different: it uses Microsoft Playwright MCP
+against a public webpage, not fake attack data. That proves Tripwire can sit in
+front of a useful published MCP server without breaking normal work. The attack
+fixtures remain separate because they safely prove blocked secret exfiltration.
 
 ## Evaluation
 
@@ -114,6 +122,7 @@ What's implemented today (everything has a backing PR on `main` and a test):
 - `tripwire` CLI (`scan` with OWASP grouping, `verify` with three exit-code semantics for valid/tampered/malformed, `verify --pub`, `key gen`, `key pub`, `ci --json`, `--sarif`).
 - Real transparent stdio MCP proxy bridge with `tools/list` rewrite and `tools/call` short-circuit ([RFC-0001](rfc/RFC-0001-e2-stdio-proxy-bridge.md)).
 - HTTP gateway for `/scan`, `/verify`, `/eval`, `/healthz`, plus the transparent HTTP/SSE MCP mount at `/mcp/sse/*` ([RFC-0004](rfc/RFC-0004-http-sse-proxy-transport.md)).
+- Real upstream proof with Microsoft Playwright MCP (`make demo-real-mcp`) and a live browser navigation through Tripwire.
 - Attack corpus runner with both approval-time and drift cases (9/9 blocked).
 - ADK Scanner / Red-team / Attestor + coordinator (`app/agent.py`) — playground-ready.
 
@@ -144,6 +153,9 @@ Quality gates run at three layers:
 git clone https://github.com/akoita/mcp-tripwire
 cd mcp-tripwire
 make check && make demo && make demo-proxy && make eval
+# One-time browser install if Playwright MCP reports a missing browser:
+npx -y @playwright/mcp@latest install-browser chrome-for-testing
+make demo-real-mcp
 make demo-proxy-sse
 # For the ADK demo (heavier deps, ~50 transitive packages):
 uv sync --extra agent && make demo-adk
