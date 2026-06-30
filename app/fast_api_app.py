@@ -53,6 +53,7 @@ app = FastAPI(
 
 _REQUIRED_BADGE_FIELDS = ("tool", "fingerprint", "sig")
 SARIF_MIME = "application/sarif+json"
+_EVAL_SIGNING_KEY = "ci-only"
 
 
 def _wants_sarif(request: Request) -> bool:
@@ -67,7 +68,7 @@ def _wants_sarif(request: Request) -> bool:
 
 
 def _signing_key() -> str:
-    return os.environ.get("TRIPWIRE_SIGNING_KEY", "dev-only-change-me")
+    return os.environ.get("TRIPWIRE_SIGNING_KEY", "")
 
 
 def _verifier():
@@ -76,15 +77,16 @@ def _verifier():
     If any of ``TRIPWIRE_PUBLIC_KEY_PATH`` (Ed25519) or
     ``TRIPWIRE_SIGNING_KEY`` (HMAC) is set, returns a populated
     ``VerifyRegistry`` so a single process accepts a mixed-alg stream.
-    Otherwise falls back to the legacy dev key — ``/verify`` keeps working
-    out of the box for tutorials/demos that haven't configured anything.
+    Otherwise returns None so ``/verify`` fails closed instead of checking
+    badges against a placeholder key.
     """
     from tripwire.signing import resolve_verify_registry
 
     registry = resolve_verify_registry()
     if registry:
         return registry
-    return _signing_key()
+    key = _signing_key()
+    return key or None
 
 
 class ScanRequest(BaseModel):
@@ -141,7 +143,17 @@ def verify(req: VerifyRequest) -> dict:
             "reason": f"malformed badge (missing {missing})",
             "tool": None,
         }
-    ok, reason = attestation.verify_badge(badge, _verifier())
+    verifier = _verifier()
+    if verifier is None:
+        return {
+            "valid": False,
+            "status": "invalid",
+            "reason": (
+                "TRIPWIRE_PUBLIC_KEY_PATH or TRIPWIRE_SIGNING_KEY is required to verify badges"
+            ),
+            "tool": badge.get("tool"),
+        }
+    ok, reason = attestation.verify_badge(badge, verifier)
     return {
         "valid": ok,
         "status": "valid" if ok else "tampered",
@@ -161,7 +173,10 @@ def eval_corpus(request: Request):
     every result).
     """
     cases = load_corpus()
-    result = run_corpus(cases, signing_key=_signing_key())
+    result = run_corpus(
+        cases,
+        signing_key=os.environ.get("TRIPWIRE_SIGNING_KEY", _EVAL_SIGNING_KEY),
+    )
     passed = result.all_attacks_blocked and not result.false_positives
 
     if _wants_sarif(request):
@@ -224,8 +239,13 @@ def _get_proxy_engine():
     global _proxy_engine
     if _proxy_engine is None:
         from tripwire import TripwireEngine
+        from tripwire.signing import SigningConfigError, resolve_signing_backend
 
-        _proxy_engine = TripwireEngine(signing_key=_signing_key())
+        try:
+            backend = resolve_signing_backend()
+        except SigningConfigError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        _proxy_engine = TripwireEngine(signing_backend=backend)
     return _proxy_engine
 
 

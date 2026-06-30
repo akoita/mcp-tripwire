@@ -9,8 +9,6 @@ human ticks the confirmation box.
 
 from __future__ import annotations
 
-import os
-
 from ..engine import TripwireEngine
 
 SYSTEM_PROMPT = (
@@ -44,12 +42,23 @@ def issue_if_clean(tool: dict) -> dict:
             badge: the signed trust badge dict, or None when not allowed.
 
     The signing key is read from the `TRIPWIRE_SIGNING_KEY` env var (Hard
-    Rule #3 — never hardcoded). If unset, a development placeholder is used
-    and the resulting badge will not verify against a production key.
+    Rule #3 — never hardcoded). If unset, the function refuses to mint a
+    badge so production trust flows fail closed.
     """
-    engine = TripwireEngine(
-        signing_key=os.environ.get("TRIPWIRE_SIGNING_KEY", "dev-only-change-me"),
-    )
+    from ..signing import SigningConfigError, resolve_signing_backend
+
+    try:
+        backend = resolve_signing_backend()
+    except SigningConfigError as exc:
+        return {
+            "action": "block",
+            "reason": str(exc),
+            "tool": str(tool.get("name", "<unnamed>")),
+            "findings": [],
+            "fingerprint": None,
+            "badge": None,
+        }
+    engine = TripwireEngine(signing_backend=backend)
     return engine.approve(tool).as_dict()
 
 

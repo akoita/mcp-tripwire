@@ -40,11 +40,15 @@ def _poisoned_tool() -> dict:
     }
 
 
-def _run(*argv: str, env: dict | None = None) -> tuple[int, str]:
+def _run(*argv: str, env: dict[str, str | None] | None = None) -> tuple[int, str]:
     """Run the CLI capturing stdout. Optionally override env for the call."""
     saved = {k: os.environ.get(k) for k in (env or {})}
     if env:
-        os.environ.update(env)
+        for k, v in env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
     try:
         buf = io.StringIO()
         with redirect_stdout(buf):
@@ -125,6 +129,20 @@ def test_verify_malformed_badge_exit_three(tmp_path: Path):
     rc, out = _run("verify", str(path), env={"NO_COLOR": "1"})
     assert rc == EXIT_BADGE_INVALID == 3
     assert "INVALID" in out.upper() or "MALFORMED" in out.upper()
+
+
+def test_verify_requires_signing_key(tmp_path: Path):
+    eng = TripwireEngine(signing_key=KEY)
+    eng.approve(_clean_tool(), issued_at="2026-01-01T00:00:00+00:00")
+    path = tmp_path / "badge.json"
+    path.write_text(json.dumps(eng.badge_for("get_weather")))
+    rc, out = _run(
+        "verify",
+        str(path),
+        env={"TRIPWIRE_SIGNING_KEY": None, "NO_COLOR": "1"},
+    )
+    assert rc == EXIT_BADGE_INVALID == 3
+    assert "TRIPWIRE_SIGNING_KEY" in out
 
 
 # --- ci -------------------------------------------------------------------
