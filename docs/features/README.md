@@ -17,7 +17,7 @@ This catalog answers: ***given a tool descriptor or an MCP connection, what conc
 
 | Symbol | Meaning |
 |---|---|
-| ✅ implemented | Shipped on `main`, covered by tests, listed in the README implementation-status table as `✅`. |
+| ✅ implemented | Shipped on `main` and covered by tests. |
 | 🟢 staged | Code exists and is callable, but the operator-path acceptance gate (real-world consumer, deploy, etc.) hasn't been ticked. |
 | 🟡 partial | Some sub-features land; others tracked separately. Notes column explains the split. |
 | 📝 design-locked | RFC accepted; no code yet. Linked from the row. |
