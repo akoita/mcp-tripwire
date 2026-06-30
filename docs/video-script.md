@@ -10,14 +10,15 @@ In a clean shell, with the repo cloned and `make check` already green:
 
 ```bash
 # Pre-warm uv so the demos don't show package-resolution noise during the take.
-uv sync --extra dev --extra agent  >/dev/null
 make check                          >/dev/null
+uv sync --extra dev --extra agent --extra signing >/dev/null
 # Tabs you'll switch between:
 #   T1 — README on github.com (Mermaid diagram visible)
 #   T2 — terminal, prompt clean, ready for `make demo-proxy`
-#   T3 — terminal, prompt clean, ready for `make demo-adk`
-#   T4 — terminal, prompt clean, ready for `make eval`
-#   T5 — VS Code on src/tripwire/proxy.py around the bridge() pump (~line 110)
+#   T3 — terminal, prompt clean, ready for `make demo-proxy-sse`
+#   T4 — terminal, prompt clean, ready for `make demo-adk`
+#   T5 — terminal, prompt clean, ready for `make eval`
+#   T6 — VS Code on src/tripwire/proxy.py around the bridge() pump
 ```
 
 Speak from the `Say:` lines verbatim or paraphrase, but **do not skip a Show**.
@@ -76,10 +77,10 @@ C) Rug pull: upstream mutates after approval; proxy quarantines
 
 ---
 
-## 1:30 — 2:15 · How the bridge does it
+## 1:30 — 2:05 · How the bridge does it
 
-**Show:** tab T5 (`src/tripwire/proxy.py`). Scroll to `async def bridge`
-around line 110.
+**Show:** tab T6 (`src/tripwire/proxy.py`). Scroll to `bridge`, `guard_tools_list`,
+or `guard_call`.
 
 **Say:**
 > Under the hood: a two-task asyncio pump between the client and the
@@ -94,9 +95,25 @@ around line 110.
 
 ---
 
-## 2:15 — 3:00 · The ADK layer
+## 2:05 — 2:35 · Hosted-MCP transport (`make demo-proxy-sse`)
 
 **Show:** terminal T3:
+
+```bash
+make demo-proxy-sse
+```
+
+**Say:**
+> The stdio bridge is the local subprocess path. The fourth demo proves the
+> same guard semantics over HTTP plus server-sent events — the transport shape
+> hosted MCP servers use. Poisoned tools are stripped, the rug pull is
+> quarantined, and the short-circuit is still JSON-RPC error `-32001`.
+
+---
+
+## 2:35 — 3:15 · The ADK layer
+
+**Show:** terminal T4:
 
 ```bash
 make demo-adk
@@ -119,9 +136,9 @@ Let it run. The output is three labelled sections — `1) Scanner`,
 
 ---
 
-## 3:00 — 3:45 · Measured evaluation
+## 3:15 — 3:55 · Measured evaluation
 
-**Show:** terminal T4:
+**Show:** terminal T5:
 
 ```bash
 make eval
@@ -145,7 +162,7 @@ CI PASS.
 
 ---
 
-## 3:45 — 4:30 · The harness story
+## 3:55 — 4:35 · The harness story
 
 **Show:** tab T1 (README on github.com). Scroll to the implementation-status
 table and let the viewer's eye take in the green checks.
@@ -159,30 +176,33 @@ table and let the viewer's eye take in the green checks.
 >
 > Two-layer eval per the course Day-4 convention: deterministic pytest
 > for code correctness, plus a measured attack corpus for behavioural
-> evaluation. Every claim in the README has a backing PR on `main` and a
+> evaluation. The repo is public, the latest `main` CI and security checks
+> are green, and every claim in the README has a backing PR on `main` and a
 > test.
 
 ---
 
-## 4:30 — 5:00 · Close
+## 4:35 — 5:00 · Close
 
 **Show:** title card or the README hero block.
 
 **Say:**
-> Three commands to reproduce: `git clone`, `make check`, `make
-> demo-proxy`. Three minutes from clone to seeing the badge break on
-> tamper. Repo at github.com slash akoita slash mcp-tripwire. Thanks for
-> watching.
+> Three commands to reproduce the core: `git clone`, `make check`, `make
+> demo-proxy`. Add `make demo-proxy-sse` for the hosted-MCP transport and
+> `make eval` for the scoreboard. Repo at github.com slash akoita slash
+> mcp-tripwire. Thanks for watching.
 
 ---
 
 ## Cuts to have ready if you run long
 
-- **Drop the `bridge()` source walk** (1:30–2:15) — the README's
+- **Drop the `bridge()` source walk** (1:30–2:05) — the README's
   implementation-status table covers the same ground.
+- **Skip `make demo-proxy-sse` live** and point at the README row instead —
+  useful if the terminal output eats time.
 - **Replace `make demo-adk` with `make demo`** — engine A/B is faster to
   narrate than the multi-agent run.
-- **Skip the harness story** (3:45–4:30) — judges who care can read
+- **Skip the harness story** (3:55–4:35) — judges who care can read
   `AGENTS.md`.
 
 Each cut buys ~45 seconds. Recoverable target is 3:30 if needed.
@@ -191,7 +211,8 @@ Each cut buys ~45 seconds. Recoverable target is 3:30 if needed.
 
 - [ ] `make check` green on the recording machine.
 - [ ] `make demo-proxy` runs in <5 seconds, output identical to the script.
-- [ ] `make demo-adk` runs (needs `[agent]` extra — `uv sync --extra agent`).
+- [ ] `make demo-proxy-sse` runs (needs `[agent]` extra).
+- [ ] `make demo-adk` runs (needs `[agent]` extra).
 - [ ] `make eval` reports `9/9 attacks blocked · 0 false-positive(s)`.
 - [ ] Recording resolution ≥ 1080p; terminal font ≥ 14pt so text is readable.
 - [ ] Audio normalised; no background noise.
