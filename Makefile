@@ -4,7 +4,7 @@
 PYTHON ?= python3
 VENV ?= .venv
 RUN_PYTHON = $(if $(wildcard $(VENV)/bin/python),$(VENV)/bin/python,$(PYTHON))
-.PHONY: help install ensure-dev check lint test guardrails eval demo demo-proxy demo-proxy-sse demo-adk ci ci-local watchdog-start watchdog-stop watchdog-status watchdog-tick clean
+.PHONY: help install ensure-dev check lint test test-agent guardrails eval demo demo-proxy demo-proxy-sse demo-adk ci ci-local watchdog-start watchdog-stop watchdog-status watchdog-tick clean
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -50,6 +50,9 @@ lint:  ## Lint + format-check with ruff
 
 test:  ## Run deterministic unit + integration tests
 	@if command -v uv >/dev/null 2>&1; then uv run pytest; else $(RUN_PYTHON) -m pytest || $(PYTHON) -m pytest; fi
+
+test-agent:  ## Run optional HTTP/ADK tests with the agent extra installed
+	@if command -v uv >/dev/null 2>&1; then PYTHONPATH=src:. uv run --extra dev --extra agent pytest tests/unit/test_agents.py tests/integration/test_http_endpoints.py tests/integration/test_demo_adk_script.py; else PYTHONPATH=src:. $(RUN_PYTHON) -m pytest tests/unit/test_agents.py tests/integration/test_http_endpoints.py tests/integration/test_demo_adk_script.py || PYTHONPATH=src:. $(PYTHON) -m pytest tests/unit/test_agents.py tests/integration/test_http_endpoints.py tests/integration/test_demo_adk_script.py; fi
 
 guardrails:  ## Deterministic enforcement of AGENTS.md hard rules
 	@if command -v uv >/dev/null 2>&1; then uv run python scripts/harness_guardrails.py; else $(RUN_PYTHON) scripts/harness_guardrails.py || $(PYTHON) scripts/harness_guardrails.py; fi

@@ -38,6 +38,8 @@ This is the project's **wedge** (see [ADR-0003](../adr/ADR-0003-signed-attestati
 `attestation.verify_badge(badge: dict, key: str) -> tuple[bool, str]` re-computes the HMAC over the canonical payload and uses `hmac.compare_digest` for constant-time comparison.
 
 The signing key comes from the `TRIPWIRE_SIGNING_KEY` env var (Hard Rule #3 — never hardcoded).
+Badge minting and verification refuse to proceed when the env var is missing; the only
+fallback key is the inert `ci-only` value used inside the attack-corpus measurement loop.
 
 ## Contract
 
@@ -72,6 +74,7 @@ Wire format is stable: the v0.2 Ed25519 upgrade preserves the schema, only the `
 ## Guarantees and limitations
 
 - **Tamper-evident** — any change to `tool / fingerprint / status / issued_at / alg` invalidates the signature; constant-time compare prevents timing oracles.
+- **Fail-closed key handling** — user-facing trust flows require `TRIPWIRE_SIGNING_KEY`; missing configuration returns an invalid/refused result instead of silently using a development key.
 - **HMAC requires a shared secret** — fine for one team running both ends. Does NOT satisfy the README's "anyone with the public key can verify" claim. Ed25519 ([RFC-0002](../rfc/RFC-0002-ed25519-signing.md)) closes that gap.
 - **No anchoring** to a public ledger (sigstore / Rekor stays P2; only interesting once we have v1.0 users asking).
 - **One key per process** — multi-tenant key management is operator concern; Tripwire doesn't ship a key vault.

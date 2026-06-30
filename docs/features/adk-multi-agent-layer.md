@@ -23,7 +23,7 @@ A coordinator agent routes operator requests to the right specialist. **The LLM 
 
 The project is enhanced via `agents-cli scaffold enhance .` — `agents-cli info` recognises it; `app/agent.py` exports `root_agent` (a coordinator `Agent` with the three sub_agents) and `app = App(name="app", root_agent=root_agent)`. App name matches the agent directory ("app") so `agents-cli eval` finds the session correctly.
 
-Each specialist factory lives in `src/tripwire/agents/`. ADK imports are deferred (lazy import inside the factory) so the deterministic core stays stdlib-only (Hard Rule #2 — `src/tripwire/agents/` is the documented exception). The Attestor's tool requires confirmation at runtime via ADK's `FunctionTool(require_confirmation=True)`.
+Each specialist factory lives in `src/tripwire/agents/`. ADK imports are deferred (lazy import inside the factory) so the deterministic core stays stdlib-only (Hard Rule #2 — `src/tripwire/agents/` is the documented exception). The Attestor's tool requires confirmation at runtime via ADK's `FunctionTool(require_confirmation=True)` and refuses to mint badges unless `TRIPWIRE_SIGNING_KEY` is set.
 
 The Phase 0 spec is [`.agents-cli-spec.md`](../../.agents-cli-spec.md) at the project root.
 
@@ -69,6 +69,7 @@ app = App(name="app", root_agent=root_agent)
 ## Guarantees and limitations
 
 - **Verdict ≠ LLM output.** Every "block" / "allow" / "quarantine" comes from the deterministic engine. The Scanner explains, the Red-team selects, the Attestor mints — none of them *decide*. This is Hard Rule #6 (never invent metrics) extended to "never invent verdicts."
+- **Badge minting fails closed.** The Attestor returns a refused decision if `TRIPWIRE_SIGNING_KEY` is missing; user confirmation alone cannot create a badge.
 - **`[agent]` extra required** — `google-adk` is heavy (~50 transitive packages). The `[dev]` venv skips it; ADK-gated tests skip cleanly with a clear reason.
 - **Model is `gemini-3-pro`** — chosen by the stub author; not changed without an explicit ask (agents-cli convention "never change models" — see [google-agents-cli-workflow §Principle 1](https://google.github.io/agents-cli/)).
 - **No conversation memory beyond the session.** Memory Bank integration is a v1.x concern.

@@ -118,6 +118,18 @@ def test_verify_malformed_badge():
     assert body["status"] == "invalid"
 
 
+def test_verify_requires_signing_key(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv("TRIPWIRE_SIGNING_KEY", raising=False)
+    eng = TripwireEngine(signing_key=KEY)
+    eng.approve(_clean_tool(), issued_at="2026-01-01T00:00:00+00:00")
+    resp = client.post("/verify", json={"badge": eng.badge_for("get_weather")})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["valid"] is False
+    assert body["status"] == "invalid"
+    assert "TRIPWIRE_SIGNING_KEY" in body["reason"]
+
+
 # --- SARIF content negotiation (RFC-0003) ---------------------------------
 
 

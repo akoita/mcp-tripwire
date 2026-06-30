@@ -137,6 +137,14 @@ def test_issue_if_clean_signs_clean(monkeypatch: pytest.MonkeyPatch):
     assert "fingerprint" in result["badge"]
 
 
+def test_issue_if_clean_requires_signing_key(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv(KEY_ENV, raising=False)
+    result = issue_if_clean(_clean())
+    assert result["action"] == "block"
+    assert result["badge"] is None
+    assert "TRIPWIRE_SIGNING_KEY" in result["reason"]
+
+
 # --- factory construction (skipped when google-adk not installed) ---------
 
 

@@ -29,6 +29,7 @@ from .detection import Finding, Severity, scan_tool
 from .owasp import title as owasp_title
 
 _KEY_ENV = "TRIPWIRE_SIGNING_KEY"
+_EVAL_SIGNING_KEY = "ci-only"
 
 EXIT_OK = 0
 EXIT_FAIL = 1
@@ -61,8 +62,9 @@ def _paint(text: str, code: str, *, on: bool) -> str:
     return f"{code}{text}{_C_RESET}" if on else text
 
 
-def _key() -> str:
-    return os.environ.get(_KEY_ENV, "dev-only-change-me")
+def _key_required() -> str | None:
+    """Return the operator-provided signing key, or None when trust flow is misconfigured."""
+    return os.environ.get(_KEY_ENV)
 
 
 def _tools_from(manifest: dict) -> list[dict]:
@@ -163,7 +165,10 @@ def cmd_verify(args: argparse.Namespace) -> int:
             return EXIT_BADGE_INVALID
         verifier = Ed25519Backend(public_key_pem=pub_pem)
     else:
-        verifier = _key()
+        verifier = _key_required()
+        if verifier is None:
+            print(f"{invalid}: {_KEY_ENV} is required to verify HMAC badges")
+            return EXIT_BADGE_INVALID
     valid, reason = attestation.verify_badge(badge, verifier)
     if valid:
         print(f"{_paint('✓ VALID', _C_GREEN, on=color)}: {reason} (tool={badge.get('tool')!r})")
@@ -213,7 +218,7 @@ def cmd_key_pub(args: argparse.Namespace) -> int:
 
 def cmd_ci(args: argparse.Namespace) -> int:
     cases = load_corpus(args.corpus)
-    result = run_corpus(cases, signing_key=_key())
+    result = run_corpus(cases, signing_key=os.environ.get(_KEY_ENV, _EVAL_SIGNING_KEY))
     passed = result.all_attacks_blocked and not result.false_positives
 
     if getattr(args, "sarif", False):

@@ -27,7 +27,7 @@ CI jobs, downstream auditors, batch scanners, and dashboards all reach the same 
 Verdict shapes are deliberately **shared with the CLI and the ADK Scanner**:
 
 - `/scan` calls the same `scan_tool_descriptor()` the ADK Scanner uses; the response is identical.
-- `/verify` returns the same valid / tampered / invalid taxonomy as the CLI's exit codes.
+- `/verify` returns the same valid / tampered / invalid taxonomy as the CLI's exit codes, and reports `invalid` when `TRIPWIRE_SIGNING_KEY` is missing.
 - `/eval` returns the same dict shape as `tripwire ci --json`.
 
 Single source of truth across three surfaces — adding a field anywhere means it shows up everywhere consistently.
@@ -51,9 +51,9 @@ GET  /eval     -> {"attacks_total": int, "attacks_blocked": int,
                    "passed": bool, "rows": [...]}
 ```
 
-`Content-Type: application/json` on every response today; `application/sarif+json` content-negotiation lands with [#32](https://github.com/akoita/mcp-tripwire/issues/32) per [RFC-0003 §HTTP surface](../rfc/RFC-0003-sarif-output.md#http-surface).
+`Content-Type: application/json` is the default. `Accept: application/sarif+json` returns SARIF 2.1.0 for `/scan` and `/eval` per [RFC-0003 §HTTP surface](../rfc/RFC-0003-sarif-output.md#http-surface).
 
-`TRIPWIRE_SIGNING_KEY` env var is honored at both mint and verify time (Hard Rule #3 — never hardcoded). The dev placeholder will be refused-by-default with a `TRIPWIRE_ALLOW_DEV_KEY=1` opt-in per [RFC-0002](../rfc/RFC-0002-ed25519-signing.md).
+`TRIPWIRE_SIGNING_KEY` env var is required for `/verify` (Hard Rule #3 — never hardcoded). Missing configuration returns `{"valid": false, "status": "invalid", ...}` instead of checking against a placeholder key. `/eval` is measurement-only and uses the inert `ci-only` key unless the env var is provided.
 
 ## Surfaces
 
@@ -65,7 +65,7 @@ GET  /eval     -> {"attacks_total": int, "attacks_blocked": int,
 
 ## Verification
 
-- Integration: [`tests/integration/test_http_endpoints.py`](../../tests/integration/test_http_endpoints.py) — 8 tests covering all four endpoints, malformed body paths, and the verify three-state outcome shape.
+- Integration: [`tests/integration/test_http_endpoints.py`](../../tests/integration/test_http_endpoints.py) — covers all four endpoints, malformed body paths, SARIF negotiation, verify outcomes, and missing-key handling.
 - Docker smoke: documented in [`docs/runbooks/deploy.md`](../runbooks/deploy.md) — curl all four endpoints from a running container.
 - Schema consistency: the response dict for `/eval` is asserted to have the same keys as `tripwire ci --json` in the integration tests (round-trip check).
 
