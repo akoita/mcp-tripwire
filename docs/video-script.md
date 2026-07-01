@@ -20,6 +20,8 @@ uv sync --extra dev --extra agent --extra signing >/dev/null
 #   T5 — terminal, prompt clean, ready for `make demo-adk`
 #   T6 — terminal, prompt clean, ready for `make eval`
 #   T7 — VS Code on src/tripwire/proxy.py around the bridge() pump
+#   T8 — terminal with `make demo` ALREADY RUN, scrolled to the final
+#        "Proof: the signed trust badge breaks on tamper" section
 ```
 
 Speak from the `Say:` lines verbatim or paraphrase, but **do not skip a Show**.
@@ -182,10 +184,30 @@ CI PASS.
 
 ---
 
-## 4:00 — 4:35 · The harness story
+## 4:00 — 4:15 · Attestation proof — the badge breaks on tamper
 
-**Show:** tab T1 (README on github.com). Scroll to the implementation-status
-table and let the viewer's eye take in the green checks.
+**Show:** tab T8 (`make demo` output, already scrolled to the final section):
+
+```
+Proof: the signed trust badge breaks on tamper
+  verify(original badge): True (valid) ✅
+  verify(tampered badge): False (signature mismatch — badge or payload was tampered with) ✅
+```
+
+**Say:**
+> One more claim to back: the badges are portable evidence, not decoration.
+> Here a signed badge verifies — then we swap a single field, and
+> verification fails with a signature mismatch. Anyone holding the key —
+> or the Ed25519 public key — can check a badge without ever calling
+> Tripwire. That's the attestation half of the story.
+
+---
+
+## 4:15 — 4:40 · The harness story
+
+**Show:** tab T1 (README on github.com). Scroll the hero block, then open
+`docs/features/README.md` — the feature catalog, one verified page per
+capability.
 
 **Say:**
 > This is a Kaggle Freestyle entry, but the engineering discipline matters
@@ -202,7 +224,7 @@ table and let the viewer's eye take in the green checks.
 
 ---
 
-## 4:35 — 5:00 · Close
+## 4:40 — 5:00 · Close
 
 **Show:** title card or the README hero block.
 
@@ -216,16 +238,20 @@ table and let the viewer's eye take in the green checks.
 
 ## Cuts to have ready if you run long
 
-- **Drop the `bridge()` source walk** (1:55–2:25) — the README's
-  implementation-status table covers the same ground.
-- **Skip `make demo-proxy-sse` live** and point at the README row instead —
-  useful if the terminal output eats time.
+- **Drop the `bridge()` source walk** (1:55–2:25) — the feature catalog
+  (`docs/features/stdio-mcp-proxy.md`) covers the same ground.
+- **Skip `make demo-proxy-sse` live** and point at its feature-catalog page
+  instead — useful if the terminal output eats time.
 - **Replace `make demo-adk` with `make demo`** — engine A/B is faster to
-  narrate than the multi-agent run.
-- **Skip the harness story** (4:00–4:35) — judges who care can read
+  narrate than the multi-agent run (and T8 already shows its tail).
+- **Skip the harness story** (4:15–4:40) — judges who care can read
   `AGENTS.md`.
+- **Compress the tamper proof** (4:00–4:15) into one narrated sentence over
+  the eval beat — keep the claim, drop the tab switch. Buys ~15 seconds;
+  prefer any other cut first, since this is the only on-screen proof of the
+  attestation half of the pitch.
 
-Each cut buys ~45 seconds. Recoverable target is 3:30 if needed.
+Each full cut buys ~45 seconds. Recoverable target is 3:30 if needed.
 
 ## Pre-flight checklist
 
@@ -235,6 +261,7 @@ Each cut buys ~45 seconds. Recoverable target is 3:30 if needed.
 - [ ] `make demo-proxy-sse` runs (needs `[agent]` extra).
 - [ ] `make demo-adk` runs (needs `[agent]` extra).
 - [ ] `make eval` reports `9/9 attacks blocked · 0 false-positive(s)`.
+- [ ] `make demo` run in T8 and scrolled to the tamper-proof section.
 - [ ] Recording resolution ≥ 1080p; terminal font ≥ 14pt so text is readable.
 - [ ] Audio normalised; no background noise.
 - [ ] No real credentials in any window, even off-screen tabs.

@@ -84,6 +84,22 @@ JSON.
 (rug-pull-exfil) from the canonical corpus — the same case `make eval` scores.
 Ask for `seed_probes` to see all nine.
 
+### Act 5 (optional) — the rug-pulled descriptor, and where invalidation really lives
+
+Paste the *mutated* form of the weather tool (the rug-pulled description from
+`examples/vulnerable_mcp_server.py` — it now smuggles an exfiltration
+instruction) and ask for a badge.
+
+**Expect:** `action='block'` at approval — the scan rules catch the hostile
+text. Note what this is *not*: a drift quarantine. Fingerprint-drift
+invalidation needs persistent approval state (the stored fingerprint of the
+previously-approved tool), and each `issue_if_clean` call builds a fresh
+engine. The stateful invalidation story — approve, mutate upstream, watch the
+re-list strip it and `tools/call` short-circuit with `-32001
+action='quarantine'` — lives in `make demo-proxy` (and `make demo` at engine
+level). Say that out loud if demoing: the agents explain and attest; the
+proxy is where continuous enforcement happens.
+
 ## What may vary vs. what must not
 
 | May vary (LLM) | Must NOT vary (engine) |
