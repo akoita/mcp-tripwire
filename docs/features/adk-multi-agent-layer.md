@@ -55,7 +55,7 @@ app = App(name="app", root_agent=root_agent)
 | Surface | How to reach it |
 |---|---|
 | `make demo-adk` | Standalone narrative — builds all three agents and exercises their *deterministic tool functions directly* (no LLM call needed). Proves the topology is real even without a model credential. |
-| `agents-cli playground` | Interactive — opens the ADK web playground, the operator chats with the coordinator. Requires `agents-cli login --interactive` for Gemini creds. |
+| `agents-cli playground` | Interactive — opens the ADK web playground, the operator chats with the coordinator. Requires `agents-cli login --interactive` for Gemini creds. Scripted live-demo scenario: [runbook](../runbooks/adk-live-playground-demo.md). |
 | `agents-cli run "..."` | One-shot prompts against the coordinator. |
 | `agents-cli eval` | Datasets live in [`tests/eval/datasets/`](../../tests/eval/datasets/) — `tool_poisoning/v1` and `schema_drift/v1`. |
 | Python | `from app.agent import root_agent, app` — the same wiring `agents-cli` uses. |
