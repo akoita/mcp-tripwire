@@ -1,5 +1,35 @@
 # Architecture
 
+## Component diagram
+
+```mermaid
+flowchart LR
+    Client["🤖 MCP client<br/>agent · agents-cli"]
+    Server["📦 Upstream MCP server(s)<br/>Playwright · GitHub · filesystem · custom"]
+
+    subgraph Tripwire["🛡 MCP-Tripwire — trust gateway"]
+        direction TB
+        Proxy["<b>proxy.py</b> — transparent stdio / SSE bridge<br/>tools/list → vet + attach badge<br/>tools/call → quarantine on drift<br/>blocked → JSON-RPC −32001"]
+        Engine["<b>engine.py</b> — trust loop<br/>scan → approve → fingerprint → attest<br/>evaluate_call → quarantine on drift"]
+        Core["<b>detection · owasp · attestation</b><br/>stdlib-only deterministic core"]
+        Proxy --> Engine --> Core
+    end
+
+    subgraph ADK["🧠 ADK agent layer — optional, [agent] extra"]
+        direction LR
+        Scanner["Scanner"]
+        Redteam["Red-team"]
+        Attestor["Attestor"]
+    end
+
+    Client -- "JSON-RPC" --> Proxy
+    Proxy -- "vetted JSON-RPC" --> Server
+
+    Scanner -.->|"same engine"| Engine
+    Redteam -.->|"same engine"| Engine
+    Attestor -.->|"same engine"| Engine
+```
+
 ## Components
 | Module | Responsibility |
 |---|---|
