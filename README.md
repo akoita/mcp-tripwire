@@ -10,7 +10,7 @@ It keeps checking a tool *after* you approve it, and hands you signed, portable 
   <img src="docs/assets/demo-proxy.gif" width="720"
        alt="make demo-proxy: a poisoned MCP tool is stripped at tools/list, a clean tool is badged, and a post-approval rug-pull is quarantined with JSON-RPC -32001">
 </p>
-<p align="center"><em>One command — <a href="docs/runbooks/real-world-agent-demo.md"><code>make demo-proxy</code></a>: the poisoned tool is stripped, the clean tool is badged, and a post-approval <strong>rug-pull is quarantined</strong> — real output, no edits.</em></p>
+<p align="center"><em>One command — <a href="docs/features/stdio-mcp-proxy.md"><code>make demo-proxy</code></a>: the poisoned tool is stripped, the clean tool is badged, and a post-approval <strong>rug-pull is quarantined</strong> — real output, no edits.</em></p>
 
 Built for the Kaggle **AI Agents Intensive Vibe Coding Capstone** (Freestyle track). Embodies the course's "Factory Model": the engineering is the **harness** around the model, not just the model.
 

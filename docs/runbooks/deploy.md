@@ -2,10 +2,8 @@
 
 > Two supported paths: **local Docker** (verified, anyone can run) and
 > **Cloud Run via `agents-cli deploy`** (staged, requires GCP creds).
-> For the real-MCP + Google Agent Platform demo path, see
+> For the real-MCP demo itself (Playwright MCP through the proxy), see
 > [real-world-agent-demo.md](real-world-agent-demo.md).
-> The stdio MCP gateway (transparent client↔upstream bridge over HTTP/SSE)
-> is a separate, larger surface tracked as a follow-up.
 
 ## What the deployment exposes
 
@@ -17,11 +15,12 @@ The Cloud Run service is the deterministic Tripwire core over HTTP:
 | POST   | `/scan`    | Body `{"tool": {...}}` → findings grouped by OWASP. Same shape as the `tripwire scan` CLI and the ADK Scanner agent. |
 | POST   | `/verify`  | Body `{"badge": {...}}` → `{valid, status, reason, tool}`. Mirrors the CLI's three exit-code outcomes (valid / tampered / invalid). |
 | GET    | `/eval`    | Runs the default attack corpus → CorpusResult dict. Same numbers as `tripwire ci --json`. |
+| —      | `/mcp/sse/*` | Guarded MCP-over-SSE gateway (RFC-0004): an MCP client connects here and Tripwire proxies to the upstream set via `TRIPWIRE_UPSTREAM_SSE_URL`, with the same tools/list vetting and drift quarantine as the stdio bridge. See [the feature page](../features/http-sse-proxy-transport.md). |
 
-The HTTP surface is for **centralised policy** — CI jobs, batch scanners,
-or downstream audit pipelines POSTing into a shared Tripwire instance.
-The MCP proxy bridge (`tripwire.proxy.StdioTripwireProxy`) is unchanged
-and remains a stdio-only sidecar in this PR.
+The plain HTTP endpoints are for **centralised policy** — CI jobs, batch
+scanners, or downstream audit pipelines POSTing into a shared Tripwire
+instance. The `/mcp/sse/*` mount is the **hosted gateway** shape: MCP
+traffic itself flows through the deployed Tripwire.
 
 ---
 
@@ -55,8 +54,8 @@ curl -s http://localhost:8080/eval | python3 -m json.tool
 docker stop mcp-tripwire
 ```
 
-Expected output is in this PR's description and is reproduced by
-`tests/integration/test_http_endpoints.py` (8 cases, all green).
+Expected output is pinned by `tests/integration/test_http_endpoints.py`,
+which exercises the same endpoints in-process.
 
 ---
 
@@ -116,21 +115,37 @@ gcloud run services update-traffic mcp-tripwire \
 
 ---
 
-## Path C — stdio MCP gateway (future)
+## Path C — hosted MCP gateway over SSE (implemented, RFC-0004)
 
-What this PR does **not** implement: serving the `StdioTripwireProxy` over
-HTTP/SSE so an MCP client can talk through a deployed Tripwire instance
-the same way it talks to a local proxy. That requires:
+Shipped in [#33](https://github.com/akoita/mcp-tripwire/issues/33): the same
+guard semantics as the stdio bridge, served over HTTP + SSE at `/mcp/sse/*`.
+Point `TRIPWIRE_UPSTREAM_SSE_URL` at the upstream MCP server (env table above)
+and an MCP client connecting to the deployed Tripwire gets vetted `tools/list`
+responses, badge attachment, and drift quarantine (`-32001`) on the wire —
+details and guarantees on
+[the feature page](../features/http-sse-proxy-transport.md); local proof via
+`make demo-proxy-sse`.
 
-1. An HTTP/SSE transport endpoint that brokers MCP messages.
-2. A bridge between that transport and the existing `proxy.bridge()` pump.
-3. A way to declare the upstream MCP server (or set thereof) the deployed
-   gateway proxies for.
+### Alternative target — ADK coordinator on Agent Runtime
 
-Tracked in [STATUS.md](../STATUS.md) under "Next". The current Cloud
-Run service is **policy-only**: callers POST individual tool descriptors
-and badges, and it returns verdicts. That is sufficient for centralised
-scanning / verification workflows.
+When the goal is "a Google-hosted *agent* routes to Scanner / Red-team /
+Attestor" (rather than the HTTP gateway), deploy to Agent Runtime instead of
+Cloud Run. Dry-run:
+
+```bash
+agents-cli deploy \
+  --dry-run \
+  --deployment-target agent_runtime \
+  --project "$GOOGLE_CLOUD_PROJECT" \
+  --region us-east1 \
+  --service-name mcp-tripwire-agent \
+  --no-confirm-project
+```
+
+A real Agent Runtime deployment additionally needs Gemini/Vertex configuration
+for the ADK model (`GOOGLE_GENAI_USE_VERTEXAI=True` + application-default
+credentials) and the same Secret-Manager-backed signing key rules as Path B —
+never a literal demo key.
 
 ---
 
