@@ -97,7 +97,9 @@ curl -s <URL>/eval | python3 -c "import json,sys; d=json.load(sys.stdin); print(
 
 | Var | Default | Notes |
 |-----|---------|-------|
-| `TRIPWIRE_SIGNING_KEY` | `dev-only-change-me` | **Production must override.** Use Secret Manager: `gcloud secrets create tripwire-signing-key` then bind it. |
+| `TRIPWIRE_SIGNING_KEY` | `dev-only-change-me` | **Production must override.** Use Secret Manager: `gcloud secrets create tripwire-signing-key` then bind it. HMAC is a *shared* secret — prefer the Ed25519 rows below when external parties verify badges. |
+| `TRIPWIRE_PRIVATE_KEY_PATH` | unset | Ed25519 signing (RFC-0002) — takes precedence over `TRIPWIRE_SIGNING_KEY` when set. Generate with `tripwire key gen --out …`, store the PEM in Secret Manager (`gcloud secrets create tripwire-ed25519-key --data-file=…`), mount it as a volume, point this var at the mounted path. **Requires the `[signing]` extra in the image** — the default `Dockerfile` installs only `[agent]`; change to `.[agent,signing]`. |
+| `TRIPWIRE_PUBLIC_KEY_PATH` | unset | Lets `/verify` check Ed25519 badges (alg-dispatched via `VerifyRegistry`). Derive with `tripwire key pub --in <private.pem>`; the public key is not secret — distribute the same file to external verifiers. |
 | `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | `NO_CONTENT` | Forced to `NO_CONTENT` in `app/app_utils/telemetry.py`. A security tool must never log raw tool payloads (Hard Rule #3). |
 | `PORT` | `8080` | Cloud Run sets this automatically. |
 | `GOOGLE_GENAI_USE_VERTEXAI` | unset | Set to `True` if the ADK layer is in use; not needed for the HTTP endpoints alone. |
@@ -140,6 +142,7 @@ scanning / verification workflows.
 | Container starts but `/scan` returns 500 | Likely a Python import failure inside the container. | `docker logs mcp-tripwire` — the FastAPI shell logs the import error. |
 | `agents-cli deploy` exits with 403 | GCP service account lacks Cloud Run / Artifact Registry roles. | `agents-cli infra single-project` provisions the roles; re-run. |
 | `/verify` always returns `tampered` for known-good badges | The `TRIPWIRE_SIGNING_KEY` on the server differs from the key the badge was minted with. | Make sure the same key is in the env at both mint time and verify time. |
+| `/verify` rejects Ed25519 badges that verify fine locally | The server has no Ed25519 verifier registered (`TRIPWIRE_PUBLIC_KEY_PATH` unset), or the public key doesn't match the minting private key, or the image lacks the `[signing]` extra. | Set `TRIPWIRE_PUBLIC_KEY_PATH` to the public key derived (`tripwire key pub --in …`) from the *same* private key that minted the badge; rebuild the image with `.[agent,signing]`. |
 | `/eval` is slow (>2s) | Cold start — the deterministic core is small but corpus loading + JSON serialisation runs every request. | Use `min-instances=1` on Cloud Run if request latency matters more than cost. |
 
 ---
@@ -150,4 +153,4 @@ scanning / verification workflows.
 - [ ] `/eval` returns `passed: true` and `attacks_blocked == attacks_total` (the real numbers — Hard Rule #6).
 - [ ] `TRIPWIRE_SIGNING_KEY` is set from Secret Manager, not from a plain env value.
 - [ ] No path serves raw payloads to logs. `gcloud logging read` shows only structured records (`{"tripwire": {"action": ...}}`).
-- [ ] README's implementation-status table updated: Cloud Run row flips from "🟡 planned" to "✅ implemented" only after a real deploy is reachable.
+- [ ] Feature catalog updated: the Cloud Run status on [`docs/features/http-gateway.md`](../features/http-gateway.md) flips to implemented/live only after a real deploy is reachable (the README's implementation-status table was retired in PR #57 — the catalog is the status SSOT).

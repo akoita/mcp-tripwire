@@ -6,6 +6,12 @@
 **Relates to:** [ADR-0001 trust gateway](../adr/ADR-0001-mcp-trust-gateway.md), [ADR-0003 signed attestations](../adr/ADR-0003-signed-attestations.md), [`src/tripwire/attestation.py`](../../src/tripwire/attestation.py)
 **Targets:** v0.2 — **second piece** (lands after SARIF #32, which is the fastest usefulness jump). Ed25519 closes the credibility gap on the badge metadata SARIF will already be carrying.
 
+> **Implementation note (post-merge, PRs #44/#45):** the shipped CLI flags differ from the
+> §CLI sketch below — `tripwire key gen --out <path>` and `tripwire key pub --in <path>`
+> (not `--priv`/`--pub`), and CLI tests live in `tests/unit/test_cli.py`. This RFC is the
+> design record; the authoritative interface is
+> [docs/features/ed25519-signing.md](../features/ed25519-signing.md).
+
 ## Why this exists
 
 Today every trust badge is HMAC-SHA256 over a canonical JSON payload. HMAC requires the verifier to know the same secret the signer used. That's fine for one team running both ends of a CI loop. It is **not** what the README promises:
