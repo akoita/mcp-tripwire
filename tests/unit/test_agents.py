@@ -68,14 +68,14 @@ def test_scan_tool_descriptor_poisoned_groups_owasp_categories():
     result = scan_tool_descriptor(_poisoned())
     assert result["status"] == "findings"
     assert len(result["findings"]) >= 1
-    # At least one MCP-01 (injection) and one MCP-06 (exfil) should fire
-    # on the poisoned descriptor.
-    assert "MCP-01" in result["counts_by_category"]
-    assert "MCP-06" in result["counts_by_category"]
+    # At least one MCP06:2025 (intent-flow subversion / injection) and one
+    # MCP01:2025 (secret exposure / exfil) should fire on the poisoned descriptor.
+    assert "MCP06:2025" in result["counts_by_category"]
+    assert "MCP01:2025" in result["counts_by_category"]
     # Human titles surface (not just IDs) — important for the agent
     # explanation layer.
-    assert any("Injection" in t for t in result["owasp_categories"])
-    assert any("Exfiltration" in t for t in result["owasp_categories"])
+    assert any("Intent Flow Subversion" in t for t in result["owasp_categories"])
+    assert any("Secret Exposure" in t for t in result["owasp_categories"])
     # Worst severity is high or critical.
     assert result["worst_severity"] in ("high", "critical")
 

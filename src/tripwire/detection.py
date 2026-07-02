@@ -74,27 +74,29 @@ def fingerprint(tool: dict) -> str:
 
 # (rule_id, compiled_pattern, title, severity, owasp_id). Patterns are deliberately
 # conservative & explainable — the LLM classifier is an additive P1 layer, not this.
+# OWASP ids follow the official MCP Top 10 (2025); the rule→category rationale
+# lives in docs/OWASP_MCP_COVERAGE.md.
 _RULES: list[tuple[str, re.Pattern, str, Severity, str]] = [
     (
         "INJ-IGNORE",
         re.compile(r"ignore\s+(all\s+)?(previous|prior|above)\s+instructions", re.I),
         "Instruction-override phrase in tool metadata",
         Severity.HIGH,
-        "MCP-01",
+        "MCP06:2025",
     ),
     (
         "INJ-SYSPROMPT",
         re.compile(r"\b(system\s+prompt|developer\s+message)\b", re.I),
         "References the system/developer prompt",
         Severity.MEDIUM,
-        "MCP-01",
+        "MCP06:2025",
     ),
     (
         "INJ-HIDE",
         re.compile(r"do\s+not\s+(tell|inform|mention\s+to)\s+the\s+user", re.I),
         "Instructs the agent to hide actions from the user",
         Severity.HIGH,
-        "MCP-01",
+        "MCP06:2025",
     ),
     (
         "EXF-SECRET",
@@ -104,21 +106,21 @@ _RULES: list[tuple[str, re.Pattern, str, Severity, str]] = [
         ),
         "Describes exfiltrating secrets/credentials",
         Severity.CRITICAL,
-        "MCP-06",
+        "MCP01:2025",
     ),
     (
         "EXF-SSHENV",
         re.compile(r"(~/?\.ssh|id_rsa|\.env\b|BEGIN [A-Z ]*PRIVATE KEY)", re.I),
         "References credential material (ssh/env/private key)",
         Severity.CRITICAL,
-        "MCP-06",
+        "MCP01:2025",
     ),
     (
         "EXF-URL",
         re.compile(r"(curl|wget|fetch|http[s]?://)\S*", re.I),
         "Embeds an outbound network call in tool metadata",
         Severity.MEDIUM,
-        "MCP-06",
+        "MCP06:2025",
     ),
 ]
 
@@ -160,7 +162,7 @@ def scan_tool(tool: dict) -> list[Finding]:
                     "INJ-INVISIBLE",
                     "Invisible/zero-width characters in metadata",
                     Severity.HIGH,
-                    "MCP-01",
+                    "MCP03:2025",
                     f"{where}: <zero-width chars>",
                     name,
                 )
@@ -172,7 +174,7 @@ def scan_tool(tool: dict) -> list[Finding]:
                     "SHADOW-HOMOGLYPH",
                     "Mixed-script (homoglyph) tool name",
                     Severity.MEDIUM,
-                    "MCP-05",
+                    "MCP03:2025",
                     f"name: {text!r}",
                     name,
                 )

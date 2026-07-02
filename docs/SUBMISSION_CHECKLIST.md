@@ -22,7 +22,7 @@ If any of them regress before submission, **stop and fix** — judges can run th
 ## Link integrity
 
 - [x] All inline relative links in `README.md`, `docs/writeup.md`, `docs/runbooks/deploy.md`, `docs/video-script.md`, `.agents-cli-spec.md`, `AGENTS.md`, `docs/STATUS.md` resolve to existing files (verified by walk-and-stat script).
-- [x] Literal taxonomy tags (e.g. `OWASP MCP-04`) use backticks, not markdown brackets — won't render as broken refs.
+- [x] Literal taxonomy tags (e.g. `MCP03:2025`) use backticks, not markdown brackets — won't render as broken refs.
 - [x] Re-verify all `https://github.com/akoita/mcp-tripwire/...` URLs in writeup + runbook return 200, not 404.
 
 ## Repo state at submission
