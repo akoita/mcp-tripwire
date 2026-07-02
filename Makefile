@@ -4,7 +4,7 @@
 PYTHON ?= python3
 VENV ?= .venv
 RUN_PYTHON = $(if $(wildcard $(VENV)/bin/python),$(VENV)/bin/python,$(PYTHON))
-.PHONY: help install ensure-dev check lint test test-agent guardrails eval demo demo-proxy demo-proxy-sse demo-real-mcp demo-adk ci ci-local watchdog-start watchdog-stop watchdog-status watchdog-tick clean
+.PHONY: help install ensure-dev check lint test test-agent guardrails eval demo demo-proxy demo-proxy-sse demo-real-mcp demo-adk ci ci-local clean
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -77,18 +77,6 @@ demo-real-mcp:  ## Real upstream demo: Tripwire fronts Microsoft Playwright MCP 
 
 ci-local:  ## Full local mirror of CI (lint+test+guardrails + bandit + dogfood + pip-audit)
 	@bash scripts/ci-local.sh
-
-watchdog-start:  ## Start the pr-watchdog daemon in the background (polls open PRs)
-	@bash scripts/pr-watchdog.sh start
-
-watchdog-stop:  ## Stop the pr-watchdog daemon
-	@bash scripts/pr-watchdog.sh stop
-
-watchdog-status:  ## Show pr-watchdog daemon status + seen-PRs ledger
-	@bash scripts/pr-watchdog.sh status
-
-watchdog-tick:  ## Run one watchdog poll in the foreground (no loop)
-	@bash scripts/pr-watchdog.sh tick
 
 clean:  ## Remove caches and eval artifacts
 	rm -rf .pytest_cache .ruff_cache **/__pycache__ artifacts/traces/* artifacts/grade_results/* 2>/dev/null || true
