@@ -72,8 +72,8 @@ def test_scan_poisoned_returns_findings_with_owasp_categories():
     body = resp.json()
     assert body["status"] == "findings"
     assert len(body["findings"]) >= 1
-    # MCP-01 (injection) and/or MCP-06 (exfil) should fire.
-    assert any(k in body["counts_by_category"] for k in ("MCP-01", "MCP-06"))
+    # MCP06:2025 (injection) and/or MCP01:2025 (exfil) should fire.
+    assert any(k in body["counts_by_category"] for k in ("MCP06:2025", "MCP01:2025"))
 
 
 def test_scan_rejects_missing_tool_body():

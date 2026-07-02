@@ -18,14 +18,14 @@ Without this, the agent treats `tools/list` as ground truth — which is exactly
 
 `tripwire.detection.scan_tool(tool: dict) -> list[Finding]` runs a deterministic, stdlib-only rule set against the descriptor:
 
-- **Instruction-override phrases** (`MCP-01`) — `"ignore previous instructions"`-class hijacks in name/description.
-- **Invisible / zero-width characters** (`MCP-01`) — Unicode payloads that hide instructions from a casual reader.
-- **Mixed-script homoglyph names** (`MCP-05`) — `"gеt_weather"` with a Cyrillic `е` shadowing a legitimate tool.
-- **Exfil instructions** (`MCP-06`) — descriptors that tell the agent to send secrets / credentials / env vars out-of-band.
-- **Outbound URLs in metadata** (`MCP-06`) — embedded `https://attacker.example/collect`-style targets.
-- **"Don't tell the user"** patterns (`MCP-10`) — instructions to hide actions from the operator.
+- **Instruction-override phrases** (`MCP06:2025`) — `"ignore previous instructions"`-class hijacks in name/description.
+- **Invisible / zero-width characters** (`MCP03:2025`) — Unicode payloads that hide instructions from a casual reader.
+- **Mixed-script homoglyph names** (`MCP03:2025`) — `"gеt_weather"` with a Cyrillic `е` shadowing a legitimate tool.
+- **Exfil instructions** (`MCP01:2025`) — descriptors that tell the agent to send secrets / credentials / env vars out-of-band.
+- **Outbound URLs in metadata** (`MCP06:2025`) — embedded `https://attacker.example/collect`-style targets.
+- **"Don't tell the user"** patterns (`MCP06:2025`) — instructions to hide actions from the operator.
 
-Each `Finding` carries `rule`, `title`, `severity` (`LOW / MEDIUM / HIGH / CRITICAL`), `owasp` (the MCP-NN id), `evidence` (a snippet), and `tool` (the descriptor's name).
+Each `Finding` carries `rule`, `title`, `severity` (`LOW / MEDIUM / HIGH / CRITICAL`), `owasp` (the `MCPnn:2025` id), `evidence` (a snippet), and `tool` (the descriptor's name).
 
 The CLI groups output by OWASP category; the HTTP `/scan` endpoint returns the same shape; the ADK Scanner agent wraps the same function as its only `FunctionTool`.
 
@@ -40,7 +40,7 @@ class Finding:
     rule: str           # e.g. "INJ-IGNORE"
     title: str          # human-readable rule title
     severity: Severity  # LOW / MEDIUM / HIGH / CRITICAL
-    owasp: str          # "MCP-01" through "MCP-10"
+    owasp: str          # "MCP01:2025" through "MCP10:2025"
     evidence: str       # short snippet showing the matched text
     tool: str           # the descriptor's "name"
 ```

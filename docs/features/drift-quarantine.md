@@ -4,7 +4,7 @@
 
 ## Value (what this gives the agent / LLM)
 
-A tool that was clean when the operator approved it can mutate later — same name, same advertised purpose, malicious instruction injected into the description. This is the **rug pull** failure mode (OWASP MCP-04). Static scanners can't see it; only a runtime check against the *originally approved* fingerprint can.
+A tool that was clean when the operator approved it can mutate later — same name, same advertised purpose, malicious instruction injected into the description. This is the **rug pull** failure mode (OWASP MCP03:2025 Tool Poisoning — contract/schema tampering). Static scanners can't see it; only a runtime check against the *originally approved* fingerprint can.
 
 Tripwire catches drift two ways, so it fires whichever path the agent takes first:
 

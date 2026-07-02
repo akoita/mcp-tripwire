@@ -80,13 +80,12 @@ def test_scan_poisoned_groups_by_owasp_category(tmp_path: Path):
     assert rc == 1
     # Output groups under an OWASP MCP heading with the human title.
     # We accept any of the relevant categories the detector might flag.
-    assert any(f"MCP-0{n}" in out for n in (1, 2, 6)), (
+    assert any(owasp_id in out for owasp_id in ("MCP01:2025", "MCP03:2025", "MCP06:2025")), (
         f"expected an OWASP MCP category heading, got:\n{out}"
     )
     # The human-readable title should appear, not just the ID.
     assert any(
-        title in out
-        for title in ("Tool Poisoning", "Prompt / Tool-Description Injection", "Sensitive Data")
+        title in out for title in ("Tool Poisoning", "Intent Flow Subversion", "Secret Exposure")
     )
 
 
@@ -208,7 +207,7 @@ def test_ci_sarif_covers_every_corpus_case_with_attribution():
         assert r["properties"]["tripwire_case"]["id"]
     case_ids = {r["properties"]["tripwire_case"]["id"] for r in results}
     # d1 is the drift case; must be present even though scan_tool returns
-    # nothing for the mutated descriptor (synthetic MCP04-DRIFT covers it).
+    # nothing for the mutated descriptor (synthetic DRIFT-RUGPULL covers it).
     assert "d1" in case_ids, f"d1 drift case missing from SARIF; got: {sorted(case_ids)}"
     assert rc in (0, 1)
 

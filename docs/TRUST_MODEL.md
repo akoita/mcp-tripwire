@@ -43,12 +43,16 @@ portable, and verifiable; it does not make it free.
 
 ### In scope — what Tripwire is designed to stop
 
-| Class | OWASP MCP | How Tripwire addresses it |
+| Class | OWASP MCP (2025) | How Tripwire addresses it |
 |---|---|---|
-| Tool poisoning (malicious description / instructions) | MCP-02 / MCP-06 | Blocked at scan time; never approved |
-| Rug pull (post-approval schema mutation) | MCP-04 | Fingerprint drift → quarantine on next call **and** on re-list |
-| Invisible-unicode / homoglyph payloads | MCP-02 | Detected during the manifest scan |
+| Tool poisoning (malicious description / instructions) | MCP03:2025 · findings tagged MCP01:2025 / MCP06:2025 | Blocked at scan time; never approved |
+| Rug pull (post-approval schema mutation) | MCP03:2025 | Fingerprint drift → quarantine on next call **and** on re-list |
+| Invisible-unicode / homoglyph payloads | MCP03:2025 | Detected during the manifest scan |
 | Undetectable tampering of trust evidence | — | Signed badge; any change fails verification |
+
+The full category-by-category picture — which of the ten Tripwire addresses,
+partially addresses, or deliberately leaves out — is in
+[OWASP_MCP_COVERAGE.md](OWASP_MCP_COVERAGE.md).
 
 ### Out of scope — explicit non-goals
 
