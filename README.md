@@ -156,6 +156,22 @@ docs/                 ADRs, RFCs (incl. RFC-0001 stdio bridge), architecture, ru
 scripts/              harness_guardrails.py (hard rules as code) · no_commit_to_main.sh
 ```
 
+## Where to read next
+
+Full index: [`docs/README.md`](docs/README.md). The main entry points, by what you're after:
+
+| If you want to… | Read |
+|---|---|
+| See exactly what ships, capability by capability (the precise reference) | [Feature catalog](docs/features/README.md) |
+| Understand the problem, the wedge, and the success criteria | [Product spec — `docs/SPEC.md`](docs/SPEC.md) |
+| See how the pieces compose (components, trust loop, data flow) | [Architecture — `docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
+| Decide what to trust, and why (threat model, assumptions, limits) | [Trust model — `docs/TRUST_MODEL.md`](docs/TRUST_MODEL.md) |
+| Run it yourself — deploy, demos, a live ADK session | [Runbooks](docs/runbooks/): [deploy](docs/runbooks/deploy.md) · [real-MCP demo](docs/runbooks/real-world-agent-demo.md) · [ADK live playground](docs/runbooks/adk-live-playground-demo.md) |
+| Understand *why* it's built this way | [ADRs](docs/adr/) (decisions) · [RFCs](docs/rfc/) (designs, e.g. the stdio bridge and Ed25519) |
+| Read the capstone story end-to-end | [Kaggle writeup — `docs/writeup.md`](docs/writeup.md) |
+| See the engineering rules every coding agent follows | [`AGENTS.md`](AGENTS.md) + [`docs/AGENTIC_SDLC.md`](docs/AGENTIC_SDLC.md) |
+| Check where the project is and where it's going | [STATUS](docs/STATUS.md) · [ROADMAP](docs/ROADMAP.md) |
+
 ## Trust model, assumptions & limitations
 
 A trust gateway has to answer the obvious question — *why trust the thing that decides what to trust?* Tripwire's answer is that it is built **not** to require trust in itself: every claim it makes is independently checkable, which pushes trust down to one well-understood anchor.
