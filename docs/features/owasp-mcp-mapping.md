@@ -8,7 +8,7 @@ Every Tripwire finding carries an `owasp` field with the canonical [OWASP MCP To
 
 - **Security teams** route findings through existing AppSec workflows (Jira queues, GH Code Scanning categories, SARIF taxonomies) without re-mapping Tripwire's vocabulary.
 - **LLM agents** explain *why* a tool was refused in a vocabulary their human operator already knows.
-- **Downstream auditors** aggregate findings across multiple tools by category — "how many MCP-04 rug-pull events did we see this week?" is a one-liner.
+- **Downstream auditors** aggregate findings across multiple tools by category — "how many MCP03:2025 tool-poisoning events did we see this week?" is a one-liner.
 
 The taxonomy isn't a feature on its own; it's the **lingua franca** that makes every other feature legible to a security audience.
 
@@ -24,23 +24,25 @@ The taxonomy isn't a feature on its own; it's the **lingua franca** that makes e
 
 ```python
 OWASP_MCP_TOP_10: dict[str, str] = {
-    "MCP-01": "Prompt / Tool-Description Injection",
-    "MCP-02": "Tool Poisoning",
-    "MCP-03": "Excessive Permissions / Over-Privilege",
-    "MCP-04": "Rug Pull (Post-Approval Tool Mutation)",
-    "MCP-05": "Tool Shadowing / Name Collision",
-    "MCP-06": "Sensitive Data & Secret Exfiltration",
-    "MCP-07": "Confused Deputy",
-    "MCP-08": "Supply-Chain / Slopsquatting",
-    "MCP-09": "Insufficient Authentication & Identity",
-    "MCP-10": "Inadequate Logging & Monitoring",
+    "MCP01:2025": "Token Mismanagement & Secret Exposure",
+    "MCP02:2025": "Privilege Escalation via Scope Creep",
+    "MCP03:2025": "Tool Poisoning",
+    "MCP04:2025": "Software Supply Chain Attacks & Dependency Tampering",
+    "MCP05:2025": "Command Injection & Execution",
+    "MCP06:2025": "Intent Flow Subversion",
+    "MCP07:2025": "Insufficient Authentication & Authorization",
+    "MCP08:2025": "Lack of Audit and Telemetry",
+    "MCP09:2025": "Shadow MCP Servers",
+    "MCP10:2025": "Context Injection & Over-Sharing",
 }
 
-def title(owasp_id: str) -> str: ...   # "MCP-01" -> "Prompt / Tool-Description Injection"
+def title(owasp_id: str) -> str: ...   # "MCP03:2025" -> "Tool Poisoning"
 def is_valid(owasp_id: str) -> bool: ...
 ```
 
-Every detection rule in `src/tripwire/detection.py` is tagged with its category at declaration time; the synthetic `MCP04-DRIFT` finding emitted by the corpus runner for caught rug-pulls (post-[#32](https://github.com/akoita/mcp-tripwire/issues/32) implementation) carries `MCP-04` directly.
+The ids/titles are the official OWASP MCP Top 10 (2025) working draft. Tripwire originally shipped an early community numbering (`MCP-01` … `MCP-10`); the old→new remap and the per-rule rationale live in [docs/OWASP_MCP_COVERAGE.md](../OWASP_MCP_COVERAGE.md).
+
+Every detection rule in `src/tripwire/detection.py` is tagged with its category at declaration time; the synthetic `DRIFT-RUGPULL` finding emitted by the corpus runner for caught rug-pulls (post-[#32](https://github.com/akoita/mcp-tripwire/issues/32) implementation; named `MCP04-DRIFT` in RFC-0003) carries `MCP03:2025` directly.
 
 The CLI's `scan` command groups findings by category in its human output; the JSON / SARIF outputs preserve the id for machine consumption.
 
@@ -48,10 +50,10 @@ The CLI's `scan` command groups findings by category in its human output; the JS
 
 | Surface | Form |
 |---|---|
-| `Finding.owasp` field | bare id (`"MCP-01"`) |
-| `tripwire scan` human output | `MCP-01 — Prompt / Tool-Description Injection` heading per group |
+| `Finding.owasp` field | bare id (`"MCP06:2025"`) |
+| `tripwire scan` human output | `MCP06:2025 — Intent Flow Subversion` heading per group |
 | `tripwire scan` SARIF (post-#32) | each `tool.driver.rules[].properties.owasp_mcp` |
-| ADK Scanner agent tool return | `owasp_categories: ["Prompt / Tool-Description Injection", ...]` plus `counts_by_category: {"MCP-01": 1}` |
+| ADK Scanner agent tool return | `owasp_categories: ["Intent Flow Subversion", ...]` plus `counts_by_category: {"MCP06:2025": 1}` |
 | HTTP `/scan` response | same dict the ADK Scanner returns |
 
 ## Verification
@@ -62,12 +64,14 @@ The CLI's `scan` command groups findings by category in its human output; the JS
 
 ## Guarantees and limitations
 
-- **Snapshot of the spec at fork time** — the OWASP MCP Top 10 is itself a moving target. The current dict reflects the project page as of 2026-06; updates ship as a one-line `owasp.py` change with a corresponding documentation refresh.
+- **Snapshot of the working draft** — the OWASP MCP Top 10 is still a working draft and may evolve. The current dict reflects the official project page as of 2026-07; updates ship as an `owasp.py` change plus a refresh of [docs/OWASP_MCP_COVERAGE.md](../OWASP_MCP_COVERAGE.md).
+- **Breaking id change for stored findings** — findings emitted before the 2025 remap carry the old `MCP-nn` ids; the old→new table in the coverage matrix is the migration reference.
 - **Per-finding tagging, not per-tool** — one tool can fire multiple rules across multiple categories. The agent gets the per-finding ids; aggregation is the consumer's job.
-- **The `MCP04-DRIFT` synthetic rule** (added by [RFC-0003](../rfc/RFC-0003-sarif-output.md) §Prerequisite, implementation tracked under [#32](https://github.com/akoita/mcp-tripwire/issues/32)) is the *only* "rule" not produced by `scan_tool` — it's emitted by the corpus runner so caught rug-pulls show up in SARIF output. Documented separately because the lifecycle is different.
+- **The `DRIFT-RUGPULL` synthetic rule** (added by [RFC-0003](../rfc/RFC-0003-sarif-output.md) §Prerequisite as `MCP04-DRIFT`, implementation tracked under [#32](https://github.com/akoita/mcp-tripwire/issues/32)) is the *only* "rule" not produced by `scan_tool` — it's emitted by the corpus runner so caught rug-pulls show up in SARIF output. Documented separately because the lifecycle is different.
 
 ## Cross-references
 
 - Companion: [descriptor-scanning.md](descriptor-scanning.md) — the source of the per-finding tag.
+- Coverage: [docs/OWASP_MCP_COVERAGE.md](../OWASP_MCP_COVERAGE.md) — which of the ten Tripwire addresses vs out-of-scope, plus the old→new id remap.
 - Future: [sarif-output.md](sarif-output.md) — the surface that makes the mapping consumable by GH Code Scanning.
-- Source: <https://owasp.org/www-project-mcp-top-10/>.
+- Source: <https://owasp.org/www-project-mcp-top-10/> ([repo](https://github.com/OWASP/www-project-mcp-top-10)).

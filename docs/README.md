@@ -4,6 +4,8 @@ Knowledge context for humans and agents (the "Knowledge" row of the context map 
 
 - **[AGENTIC_SDLC.md](AGENTIC_SDLC.md)** — how we build: the Factory Model, the loop, the quality flywheel.
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — components, the trust loop, data flow.
+- **[TRUST_MODEL.md](TRUST_MODEL.md)** — what you can verify vs must assume; threat model and non-goals.
+- **[OWASP_MCP_COVERAGE.md](OWASP_MCP_COVERAGE.md)** — coverage matrix against the official OWASP MCP Top 10 (2025) + old→new id remap.
 - **adr/** — Architecture Decision Records (one per structural decision).
   - [ADR-0001](adr/ADR-0001-mcp-trust-gateway.md) — MCP trust gateway, not a scanner
   - [ADR-0003](adr/ADR-0003-signed-attestations.md) — signed, tamper-evident attestations (the wedge)

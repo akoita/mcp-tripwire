@@ -50,8 +50,8 @@ Paste into the chat:
 **Expect:** the coordinator routes to `tripwire_scanner`, which calls
 `scan_tool_descriptor` once and reports deterministic findings — instruction
 override (INJ-IGNORE), secret exfiltration (EXF-SECRET / EXF-URL), and
-hidden-from-user (INJ-HIDE) — grouped under OWASP MCP-01 and MCP-06, worst
-severity `critical`, with the evidence snippets quoted verbatim.
+hidden-from-user (INJ-HIDE) — grouped under OWASP MCP06:2025 and MCP01:2025,
+worst severity `critical`, with the evidence snippets quoted verbatim.
 
 ### Act 2 — Attestor refuses, even with human approval
 

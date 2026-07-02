@@ -51,12 +51,12 @@ def test_to_sarif_empty_inputs_yields_valid_skeleton():
 
 
 def test_to_sarif_one_finding_creates_one_rule_one_result():
-    inp = SarifInput(findings=(_f("INJ-IGNORE", "MCP-01"),), input_uri="/tmp/x.json")
+    inp = SarifInput(findings=(_f("INJ-IGNORE", "MCP06:2025"),), input_uri="/tmp/x.json")
     doc = to_sarif([inp])
     run = doc["runs"][0]
     assert len(run["tool"]["driver"]["rules"]) == 1
     assert run["tool"]["driver"]["rules"][0]["id"] == "INJ-IGNORE"
-    assert run["tool"]["driver"]["rules"][0]["properties"]["owasp_mcp"] == "MCP-01"
+    assert run["tool"]["driver"]["rules"][0]["properties"]["owasp_mcp"] == "MCP06:2025"
     assert len(run["results"]) == 1
     assert run["results"][0]["ruleId"] == "INJ-IGNORE"
     assert run["results"][0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] == (
@@ -67,8 +67,8 @@ def test_to_sarif_one_finding_creates_one_rule_one_result():
 def test_to_sarif_dedupes_rule_across_results():
     inp = SarifInput(
         findings=(
-            _f("EXFIL-SECRET", "MCP-06"),
-            _f("EXFIL-SECRET", "MCP-06"),
+            _f("EXFIL-SECRET", "MCP01:2025"),
+            _f("EXFIL-SECRET", "MCP01:2025"),
         ),
         input_uri="/tmp/two.json",
     )
@@ -79,7 +79,7 @@ def test_to_sarif_dedupes_rule_across_results():
 
 
 def test_to_sarif_per_result_tripwire_props_carry_finding_dict():
-    inp = SarifInput(findings=(_f("INJ-IGNORE", "MCP-01"),), input_uri="/tmp/x.json")
+    inp = SarifInput(findings=(_f("INJ-IGNORE", "MCP06:2025"),), input_uri="/tmp/x.json")
     doc = to_sarif([inp])
     props = doc["runs"][0]["results"][0]["properties"]
     assert props["tripwire"]["rule"] == "INJ-IGNORE"
@@ -100,7 +100,7 @@ def test_to_sarif_per_result_tripwire_props_carry_finding_dict():
 )
 def test_severity_maps_to_sarif_level(severity: Severity, expected_level: str):
     inp = SarifInput(
-        findings=(_f(f"R-{severity.name}", "MCP-01", severity=severity),),
+        findings=(_f(f"R-{severity.name}", "MCP06:2025", severity=severity),),
         input_uri="urn:tripwire:input:stdin",
     )
     doc = to_sarif([inp])
@@ -113,7 +113,7 @@ def test_severity_maps_to_sarif_level(severity: Severity, expected_level: str):
 def test_ci_inputs_carry_tripwire_case_props_on_results():
     """Per-case attribution — RFC-0003 Codex finding #1."""
     inp = SarifInput(
-        findings=(_f("INJ-IGNORE", "MCP-01"),),
+        findings=(_f("INJ-IGNORE", "MCP06:2025"),),
         input_uri="urn:tripwire:corpus:a3",
         case_id="a3",
         properties={"category": "instruction-override", "decision_action": "block"},
@@ -127,15 +127,15 @@ def test_ci_inputs_carry_tripwire_case_props_on_results():
 
 def test_from_corpus_rows_includes_drift_case_with_synthetic_finding():
     """End-to-end: run the real corpus, build SarifInputs, the d1 drift case
-    must produce a result with ruleId == 'MCP04-DRIFT'."""
+    must produce a result with ruleId == 'DRIFT-RUGPULL'."""
     rows = run_corpus(load_corpus()).rows
     inputs = from_corpus_rows(rows)
     doc = to_sarif(inputs)
     rule_ids = {r["id"] for r in doc["runs"][0]["tool"]["driver"]["rules"]}
-    assert "MCP04-DRIFT" in rule_ids, (
-        f"d1 drift case didn't produce a synthetic MCP04-DRIFT rule. Rule IDs: {rule_ids}"
+    assert "DRIFT-RUGPULL" in rule_ids, (
+        f"d1 drift case didn't produce a synthetic DRIFT-RUGPULL rule. Rule IDs: {rule_ids}"
     )
-    drift_results = [r for r in doc["runs"][0]["results"] if r["ruleId"] == "MCP04-DRIFT"]
+    drift_results = [r for r in doc["runs"][0]["results"] if r["ruleId"] == "DRIFT-RUGPULL"]
     assert len(drift_results) == 1
     assert drift_results[0]["properties"]["tripwire_case"]["id"] == "d1"
 
@@ -158,11 +158,11 @@ def test_to_sarif_output_validates_against_official_schema():
     inputs = [
         SarifInput(findings=(), input_uri="/tmp/clean.json"),
         SarifInput(
-            findings=(_f("INJ-IGNORE", "MCP-01"), _f("EXFIL-SECRET", "MCP-06")),
+            findings=(_f("INJ-IGNORE", "MCP06:2025"), _f("EXFIL-SECRET", "MCP01:2025")),
             input_uri="/tmp/poisoned.json",
         ),
         SarifInput(
-            findings=(_f("MCP04-DRIFT", "MCP-04"),),
+            findings=(_f("DRIFT-RUGPULL", "MCP03:2025"),),
             input_uri="urn:tripwire:corpus:d1",
             case_id="d1",
             properties={"category": "rug-pull-exfil", "decision_action": "quarantine"},
@@ -191,7 +191,7 @@ def test_from_corpus_rows_raises_on_unknown_severity():
                 "rule": "BOGUS",
                 "title": "bogus",
                 "severity": "catastrophic",  # not a real Severity name
-                "owasp": "MCP-01",
+                "owasp": "MCP06:2025",
                 "evidence": "...",
                 "tool": "t",
             }
