@@ -1,9 +1,9 @@
 # Runbook: the quick live proof-moment demo
 
-For giving the demo **live, in person** (a meetup, a review, a judge Q&A) in
-under three minutes with zero setup risk. The full recorded-video script —
-beats, narration, timings, tabs — is
-[`docs/video-script.md`](../video-script.md); this page is the minimal
+For giving the demo **live, in person** (a meetup, a review, a stakeholder Q&A) in
+under three minutes with zero setup risk. A fuller narrated walkthrough —
+beats, narration, timings, tabs — is archived at
+[`docs/archive/kaggle-submission/video-script.md`](../archive/kaggle-submission/video-script.md); this page is the minimal
 in-person version. Everything is deterministic and uses a clearly-labelled
 **canary** secret + a local fake sink (never real credentials).
 

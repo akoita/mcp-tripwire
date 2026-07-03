@@ -2,9 +2,7 @@
 
 _Working memory. Update at the end of each session._
 
-**Now (submission readiness):** SARIF (#32) + Ed25519 (#31) + HTTP/SSE proxy (#33) all landed on main, the GitHub repo is public, and local validation is green. Remaining work is the submission wrapper: video link, final Kaggle writeup paste, link dry-run, and the optional Cloud Run proof tracked in GitHub issues.
-
-_Older milestones:_ Day 3 — CLI polish (#6) + drift eval (#7); 32 tests at that tag. `make eval` still reports `9/9 attacks blocked · 0 false-positives on 4 clean tools`.
+**Now (post-submission, building for real use):** the v0.2 Credibility & integration milestone — SARIF (#32) + Ed25519 (#31) + HTTP/SSE proxy (#33) — is fully landed on public `main`, and local validation is green. Focus has shifted from the competition submission (archived under [`docs/archive/`](archive/)) to production hardening: CI depth, test coverage, detection breadth, and a first real deployment. `make eval` reports `9/9 attacks blocked · 0 false-positives on 4 clean tools`.
 
 ## Done
 - E1 Core — `detection` (fingerprint + injection/poisoning + invisible/homoglyph), `engine` (trust loop: allow/block/quarantine/require-approval), `attestation` (alg-dispatching: HMAC default, Ed25519 via `[signing]` extra), `signing/` subpackage (HmacBackend + Ed25519Backend + env-driven resolvers + VerifyRegistry), `owasp` (MCP Top-10 map), `corpus` runner, `cli` (scan/verify [+ --pub] / ci / key gen / key pub).
@@ -12,17 +10,18 @@ _Older milestones:_ Day 3 — CLI polish (#6) + drift eval (#7); 32 tests at tha
 - Harness — `AGENTS.md` SSOT + `CLAUDE.md`/`GEMINI.md` symlinks; `.agents/skills` (+ `.claude`/`.gemini` adapters); `scripts/harness_guardrails.py`; `make check`; CI; docs taxonomy. Pre-commit active locally.
 - Demo — A/B canary proof + rug-pull quarantine + tamper-evident badge.
 
-## Next
-- Refresh stale submission docs/status/writeup for the current v0.2 implementation state (#49).
-- Record and host the five-minute video, then add the URL to `docs/writeup.md` and optionally the README (#11).
-- Finalize/paste the Kaggle writeup and submit (#12).
-- Run final dry run on public `main`: clone, links, secret scan, demos, evals (#13).
-- Either deploy Cloud Run or explicitly choose the documented local Docker fallback for submission (#9).
+## Next (hardening — see [ROADMAP.md](ROADMAP.md))
+- Make CI run the full extras-gated suite — Ed25519 / SSE / HTTP-gateway / ADK tests currently never run in CI (#60).
+- Add coverage reporting to CI (#66).
+- Deepen detection tests: per-rule matrix (#61), proxy error paths (#62), homoglyph on descriptions (#65).
+- Grow the attack corpus to 50+ data-driven cases (#64).
+- Wire the LLM-judge `explanation_quality` eval metric (#63).
+- Refresh stale `TECH_DEBT.md` — shipped features still listed as stubs (#59).
+- Release automation: changelog + tag flow, stale-branch pruning (#67).
 
 ## Open
-- Cloud Run remains optional/pending; local Docker and local demos are the current operator proof.
-- Video recording/upload is not done yet; writeup still has a video placeholder.
-- GitHub Actions are unblocked by public visibility; latest `main` CI and security workflow runs are green. Local `make check` + `make eval` remain the fastest pre-submit gate.
+- Cloud Run remains optional/staged; local Docker and local demos are the current operator proof.
+- GitHub Actions runs are green on `main`, but only cover `[dev]` — extras-gated tests skip in CI until #60 lands. Local `make check` (with extras) + `make eval` remain the fullest gate.
 
 ## Resolved
 - Signing scheme: HMAC now → Ed25519 — landed in [#31](https://github.com/akoita/mcp-tripwire/issues/31) per RFC-0002; HMAC remains the zero-deps default, Ed25519 ships behind `[signing]`.

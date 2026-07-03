@@ -14,6 +14,7 @@ Knowledge context for humans and agents (the "Knowledge" row of the context map 
 - **rfc/** — design proposals; all four (stdio proxy, Ed25519, SARIF, HTTP/SSE) are accepted and implemented.
 - **[features/](features/)** — **the precise reference** for what Tripwire delivers, per capability. One page per feature; index at [features/README.md](features/README.md). The catalog is the precise reference; the project root README is the pitch.
 - **plans/** — per-epic delivery plans (from `_TEMPLATE.md`).
+- **[archive/](archive/)** — historical artifacts (the original competition submission), kept for the record and out of the active surface.
 - **runbooks/** — operational guides, one per job:
   - [deploy.md](runbooks/deploy.md) — local Docker · Cloud Run · hosted SSE gateway · Agent Runtime; env vars & secrets.
   - [real-world-agent-demo.md](runbooks/real-world-agent-demo.md) — Tripwire fronting real Playwright MCP; candidate real MCPs.
@@ -21,4 +22,4 @@ Knowledge context for humans and agents (the "Knowledge" row of the context map 
   - [demo-proof-moment.md](runbooks/demo-proof-moment.md) — the 3-minute in-person demo checklist.
   - [sarif-in-gh-actions.md](runbooks/sarif-in-gh-actions.md) — landing findings in GitHub Code Scanning.
 
-State lives alongside this index: [STATUS.md](STATUS.md), [ROADMAP.md](ROADMAP.md), [BACKLOG.md](BACKLOG.md), [TECH_DEBT.md](TECH_DEBT.md), [SPEC.md](SPEC.md), [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md). Only the working-memory docs and tooling-required files (README, LICENSE, AGENTS.md, etc.) live at the repo root — see the `check_root_clean()` allowlist in [`scripts/harness_guardrails.py`](../scripts/harness_guardrails.py).
+State lives alongside this index: [STATUS.md](STATUS.md), [ROADMAP.md](ROADMAP.md), [BACKLOG.md](BACKLOG.md), [TECH_DEBT.md](TECH_DEBT.md), [SPEC.md](SPEC.md). Only the working-memory docs and tooling-required files (README, LICENSE, AGENTS.md, etc.) live at the repo root — see the `check_root_clean()` allowlist in [`scripts/harness_guardrails.py`](../scripts/harness_guardrails.py).

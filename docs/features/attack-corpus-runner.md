@@ -93,7 +93,7 @@ Per-case JSONL shape:
 
 - Unit: [`tests/unit/test_corpus.py`](../../tests/unit/test_corpus.py) — 5 tests covering approval-attack baseline, clean baseline, real-drift caught, no-drift-not-FP, default-corpus smoke (every line loads, every case gets a row — Rule #6).
 - Integration: [`tests/integration/test_http_endpoints.py::test_eval_returns_corpus_result`](../../tests/integration/test_http_endpoints.py) — round-trip through the HTTP gateway.
-- Manual: `make eval` from a fresh clone (the fresh-clone dry-run that produced the [SUBMISSION_CHECKLIST.md](../SUBMISSION_CHECKLIST.md) recorded `CI PASS.`).
+- Manual: `make eval` from a fresh clone reproduces the headline number and prints `CI PASS.`.
 
 ## Guarantees and limitations
 

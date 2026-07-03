@@ -1,86 +1,66 @@
 # MCP-Tripwire — Roadmap
 
-> **Current cut:** `main` is the submission candidate; `v0.1.0-capstone` ([tag](https://github.com/akoita/mcp-tripwire/releases/tag/v0.1.0-capstone)) remains the historical Day-4 code-freeze anchor. The Kaggle deadline is 2026-07-06 PT; submission itself, video recording, and the optional Cloud Run push are still pending human action — see [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md).
-> **Now:** submission readiness after v0.2 — **Credibility & integration** (SARIF, Ed25519, HTTP/SSE) has landed; remaining work is packaging, video, and final validation.
 > **One-liner:** *"Can this agent keep trusting this tool during execution — and can I prove it?"*
+> **Now:** hardening the shipped surface (CI depth, test coverage, detection breadth) and moving toward a first real deployment.
+> **Direction:** from a sharp, well-tested primitive to a production-grade trust gateway teams actually run in front of their MCP servers.
 
-## Submission candidate — `main`
+## Shipped
 
-The current submission candidate builds on the `v0.1.0-capstone` code-freeze tag and the v0.2 credibility work. What's shipped on `main`:
+Everything below is on `main`, implemented and covered by tests. The precise, file-by-file map lives in the [feature catalog](features/README.md).
 
-| Epic | What | Where |
+| Area | What | Where |
 |---|---|---|
-| E1 Core | detection · engine · attestation · OWASP map · corpus runner · CLI | `src/tripwire/*.py` |
-| E2 Proxy bridge (stdio) | `tools/list` rewrite · `tools/call` drift quarantine · structured stderr log | `src/tripwire/proxy.py` ([RFC-0001](rfc/RFC-0001-e2-stdio-proxy-bridge.md)) |
-| E3 ADK multi-agent | Scanner / Red-team / Attestor + coordinator | `src/tripwire/agents/`, `app/agent.py` ([.agents-cli-spec.md](../.agents-cli-spec.md)) |
-| E4 Proof moments | four demos: engine A/B, stdio proxy, ADK pipeline, HTTP/SSE proxy | `examples/demo*.py`, `make demo*` |
-| E6 Cloud Run | HTTP gateway (`/scan` `/verify` `/eval` `/healthz`), local Docker verified, deploy runbook | `app/fast_api_app.py`, [`docs/runbooks/deploy.md`](runbooks/deploy.md) |
-| E7 Submission | README final + Kaggle writeup + video script + dry-run checklist | `docs/{writeup,video-script,SUBMISSION_CHECKLIST}.md` |
-| Harness | hard rules machine-enforced; pre-commit no-commit-to-main; retro-PR'd direct-to-main history | [AGENTS.md](../AGENTS.md), `scripts/harness_guardrails.py`, `scripts/no_commit_to_main.sh` |
+| Core | detection · engine · attestation · OWASP map · corpus runner · CLI | `src/tripwire/*.py` |
+| Signing | alg-dispatching attestation; HMAC default + Ed25519 backend behind `[signing]`; `key gen` / `key pub` / `verify --pub` | `src/tripwire/signing/`, `src/tripwire/attestation.py` |
+| Proxy bridge | stdio **and** HTTP/SSE transports; `tools/list` rewrite · `tools/call` drift quarantine (JSON-RPC `-32001`) · structured stderr log | `src/tripwire/proxy.py` ([RFC-0001](rfc/RFC-0001-e2-stdio-proxy-bridge.md), [RFC-0004](rfc/RFC-0004-http-sse-proxy-transport.md)) |
+| SARIF output | `scan`/`ci --sarif` + HTTP content-negotiation → GitHub Code Scanning / GitLab SAST | `src/tripwire/sarif.py` ([RFC-0003](rfc/RFC-0003-sarif-output.md)) |
+| Multi-agent | Scanner / Red-team / Attestor + coordinator over the same deterministic engine | `src/tripwire/agents/`, `app/agent.py` |
+| Proof moments | five demos: engine A/B, stdio proxy, ADK pipeline, HTTP/SSE proxy, **real Playwright MCP** | `examples/demo*.py`, `make demo*` |
+| HTTP gateway | `/scan` `/verify` `/eval` `/healthz`; local Docker verified | `app/fast_api_app.py`, [`docs/runbooks/deploy.md`](runbooks/deploy.md) |
+| Harness | hard rules machine-enforced; pre-commit no-commit-to-main; feature-catalog + root-clean guardrails | [AGENTS.md](../AGENTS.md), `scripts/harness_guardrails.py` |
 
-Headline numbers on the submission candidate: **75 default tests pass / 46 optional-extra skips**, **139 tests pass with `[agent]` + `[signing]`**, **9/9 attacks blocked**, 0 false positives on 4 clean tools, deterministic core stdlib-only.
+Measured on `main`: **75 default tests pass / 46 optional-extra skips**, **139 pass with `[agent]` + `[signing]`**, **9/9 attacks blocked · 0 false positives on 4 clean tools** (`make eval`), deterministic core stdlib-only.
 
-**Still pending human action between now and 2026-07-06** (tracked in [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md) and as open issues):
-- [#11](https://github.com/akoita/mcp-tripwire/issues/11) record the 5-minute video.
-- [#9](https://github.com/akoita/mcp-tripwire/issues/9) push the Cloud Run deploy via `agents-cli deploy` (optional but greens the table).
-- [#13](https://github.com/akoita/mcp-tripwire/issues/13) final public dry run, paste writeup into Kaggle UI, click Submit.
-
-A future "post-capstone" section will land here once submission is actually done.
+The **v0.2 — Credibility & integration** milestone (SARIF · Ed25519 · HTTP/SSE) is complete; design history is in the four accepted RFCs under [`docs/rfc/`](rfc/).
 
 ---
 
-## Completed — v0.2 Credibility & integration
+## Now — hardening
 
-**Thesis.** Move from "capstone-ready demo" to "could be dropped into a real security pipeline today." Three pieces, **judged by one external integration**, not by better internal docs.
+Making the shipped surface trustworthy to *run*, not just to demo. Tracked as GitHub issues:
 
-**Acceptance gate for the v0.2.0 tag:** an external operator path is reproducible end-to-end on a fresh clone — configure a non-fixture target MCP server, run Tripwire, get findings, verify the badge. One real consumer, not three internal tests in a trench coat. The local Docker path is documented; Cloud Run remains optional/pending in [#9](https://github.com/akoita/mcp-tripwire/issues/9).
-
-**Tracking page:** [milestone v0.2.0 on GitHub](https://github.com/akoita/mcp-tripwire/milestone/1) shows the live open/closed split. Don't trust this table over what the milestone says.
-
-### Ordering — SARIF first
-
-SARIF is the fastest usefulness jump for the audience that matters (security teams already running SAST tooling). The badge alg is an internal detail of how Tripwire signs; SARIF describes findings regardless. So:
-
-| # | Issue | RFC | Impl | What |
-|---|---|---|---|---|
-| 1st | [#32](https://github.com/akoita/mcp-tripwire/issues/32) | [RFC-0003](rfc/RFC-0003-sarif-output.md) ✅ accepted | ✅ done ([PR #41](https://github.com/akoita/mcp-tripwire/pull/41) / e4ae958) | **SARIF output** for `scan` + `eval`. Lands findings in GitHub Code Scanning / GitLab SAST with zero integration code. Biggest single move toward "useful" because it meets security teams where they already work. |
-| 2nd | [#31](https://github.com/akoita/mcp-tripwire/issues/31) | [RFC-0002](rfc/RFC-0002-ed25519-signing.md) ✅ accepted | ✅ done ([PR #44](https://github.com/akoita/mcp-tripwire/pull/44) + follow-up) | **Ed25519 signing** over HMAC. Turns the badge SARIF is already carrying into something a third party can verify with only the public key — the README's "portable, independently verifiable" claim, finally true. |
-| 3rd | [#33](https://github.com/akoita/mcp-tripwire/issues/33) | [RFC-0004](rfc/RFC-0004-http-sse-proxy-transport.md) ✅ accepted | ✅ done (PR #46 + follow-up) | **HTTP/SSE MCP transport** in the proxy. Broadens the deployable surface to cloud-hosted MCP servers. Necessary for the external-integration acceptance gate, since most non-fixture MCP servers worth pointing Tripwire at use SSE. |
-
-Each piece got a design RFC under [`docs/rfc/`](rfc/) before code. RFCs required human review; implementation PRs did not land until the RFC merged. This was the **deliberate-pace** ground rule for v0.2.
-
-**Per-issue implementation pointer.** Each issue body (#31, #32, #33) has an "Implementation" section that links to its RFC's Day-N plan. Open the issue → click the link → see the next concrete step. The RFC's Day-N plan is the canonical to-do list for that piece, not a separate checklist (keeps one source of truth).
-
-**Lesson recorded** (from the audit that surfaced this gap): RFC PRs must use `Refs #N` not `Closes #N` in their bodies — GitHub auto-closes greedily on the keyword. Both #31 and #32 were auto-closed when their RFC-only PRs merged and had to be reopened; the convention is documented now so it doesn't recur.
-
-### Exit criteria for the v0.2.0 tag
-
-- All three issues closed by merged PRs.
-- README implementation-status table: every row 🟢 staged or 🟡 planned at v0.1 either flips to ✅ implemented or gets an explicit deferral to v0.3.
-- `make eval` + `make demo*` still green from a fresh clone (regression of any v0.1 capability blocks the tag).
-- **Operator-path proof:** a documented session of "fresh clone → configure a real MCP server → run Tripwire → SARIF in GH Code Scanning → badge verified with the public key by a process that didn't sign it." This is the actual judgement.
+| Theme | Issue | Why it matters |
+|---|---|---|
+| CI runs the full suite | [#60](https://github.com/akoita/mcp-tripwire/issues/60) | CI installs only `[dev]`, so the tests protecting Ed25519 / SSE / HTTP-gateway / ADK never run in CI — a regression there ships green. Highest-value gap. |
+| Coverage reporting | [#66](https://github.com/akoita/mcp-tripwire/issues/66) | Make coverage visible so gaps are caught, not guessed. |
+| Detection depth | [#61](https://github.com/akoita/mcp-tripwire/issues/61), [#62](https://github.com/akoita/mcp-tripwire/issues/62), [#65](https://github.com/akoita/mcp-tripwire/issues/65) | Per-rule positive/negative matrix; proxy error-path tests; extend homoglyph detection from names to descriptions. |
+| Corpus breadth | [#64](https://github.com/akoita/mcp-tripwire/issues/64) | Grow the attack corpus to 50+ data-driven cases so the headline number means more. |
+| Eval flywheel | [#63](https://github.com/akoita/mcp-tripwire/issues/63) | Wire the LLM-judge `explanation_quality` metric into the eval harness. |
+| Honest docs | [#59](https://github.com/akoita/mcp-tripwire/issues/59) | Refresh `TECH_DEBT.md` — shipped features are still listed as stubs. |
+| Release flow | [#67](https://github.com/akoita/mcp-tripwire/issues/67) | Changelog + tag automation and stale-branch pruning for a maintainable release cadence. |
 
 ---
 
-## After v0.2 — provisional ordering
+## Next — v0.3 Scale & multi-upstream
 
-### v0.3 — Scale & multi-upstream
-One proxy fronting N MCP servers + central tool registry + per-tool policy-as-code (YAML rules an operator can edit without touching Python) + observability beyond stderr (Cloud Logging / a queryable audit store). Turns the single-host gateway into a fleet gateway. **Blocked on v0.2** — multi-upstream policy is only credible if the badges it emits are independently verifiable (#31) and its findings flow to consumers (#32).
+One proxy fronting N MCP servers + a central tool registry + per-tool policy-as-code (YAML rules an operator edits without touching Python) + observability beyond stderr (Cloud Logging / a queryable audit store). Turns the single-host gateway into a fleet gateway. Credible only because v0.2 made the badges independently verifiable and the findings SARIF-portable.
 
-### v1.0 — First real user
-Hosted Docker image, 1-page "plug me in" doc, issue-tracker label for production bugs, feedback cadence. Find one friendly team running real MCP servers and ship Tripwire into their pipeline. Real usage drives the v1.0 → v1.x backlog more than any internal planning round.
+## Then — v1.0 First real user
 
-### Permanently P2 / Won't (without a strong external pull)
-- Sigstore / Rekor anchoring (interesting but premature without users asking).
+Published package, a hosted Docker image, a one-page "plug me in" guide, a production-bug issue label, and a feedback cadence. Find one team running real MCP servers and put Tripwire in front of their pipeline. Real usage — not internal planning — drives the v1.x backlog from there.
+
+## Deliberately out of scope (until real pull)
+
+- Sigstore / Rekor anchoring — interesting, premature without users asking.
 - Multi-framework support beyond MCP (LangChain, Cursor, raw tools) — would dilute the wedge.
-- Hosted dashboard / Tripwire-the-SaaS — explicitly the wrong shape; Tripwire is plumbing other people host.
+- Hosted dashboard / Tripwire-as-a-SaaS — the wrong shape; Tripwire is plumbing other people host.
 
 ---
 
-## Process notes carried over from capstone
+## How this project is built
 
-- Every commit on a feature branch, every PR closes (or refs) at least one issue.
-- The `no-commit-to-main` pre-commit hook (PR #21) refuses direct commits to `main`.
-- `make check` must be green before any PR.
-- Hard Rule #6 — never invent metrics. Every quoted number in any artefact traces to a `make` command run.
-- See [AGENTS.md](../AGENTS.md) for the full ruleset.
+- Every commit on a feature branch; every PR closes or refs an issue.
+- Structural decisions get an [ADR](adr/); non-trivial designs get an [RFC](rfc/) reviewed before code.
+- `make check` must be green before any PR; the `no-commit-to-main` hook enforces the branch flow.
+- **Hard Rule #6 — never invent metrics.** Every quoted number traces to a `make` command run.
+- Full ruleset: [AGENTS.md](../AGENTS.md). Methodology: [AGENTIC_SDLC.md](AGENTIC_SDLC.md).

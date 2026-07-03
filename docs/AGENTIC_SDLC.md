@@ -1,8 +1,7 @@
 # The Agentic SDLC (how we build MCP-Tripwire)
 
-This project is built as a **software factory**, per the course's Day-1 "Factory Model":
-the primary output is *the system that produces the code* — the harness — not just the code.
-`Agent = Model + Harness.`
+This project is built as a **software factory** (the "Factory Model"): the primary output is
+*the system that produces the code* — the harness — not just the code. `Agent = Model + Harness.`
 
 ## The harness mapped to the SDLC
 | Phase | Harness activity | Where |
@@ -20,7 +19,7 @@ Keep `AGENTS.md` lean — it's paid every interaction.
 ## Two-layer verification (the contract)
 1. **Deterministic tests** (`pytest`) — signing, fingerprinting, drift, decisions.
 2. **Non-deterministic evals** (`tests/eval/`) — corpus + LLM-judge for explanation quality.
-*Without both, it's just vibe coding.* Tests/evals are written **before** the code (Hard Rule #5).
+*Without both, correctness is a guess.* Tests/evals are written **before** the code (Hard Rule #5).
 
 ## The Quality Flywheel
 evaluate against the corpus → cluster failures → tighten rules/prompts → re-run regression →
