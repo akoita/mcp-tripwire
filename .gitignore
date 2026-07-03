@@ -31,3 +31,6 @@ artifacts/grade_results/*
 .claude/watchdog/
 .claude/settings.local.json
 .claude/watchdog/
+
+# ADK web playground local state (sessions, eval history)
+.adk/

@@ -116,6 +116,13 @@ in the tool response is the ground truth.
 ## Troubleshooting
 
 - `ImportError: google.adk` → `uv sync --extra agent`.
+- `pyenv: adk: command not found` (exit 127) at playground launch → the
+  `[agent]` extra was pruned from `.venv` (any `make check` does this via
+  `uv sync --extra dev`); re-run `uv sync --extra dev --extra agent`.
+- `404 NOT_FOUND: models/<id> is not found for API version v1beta` on the
+  first chat turn → the configured Gemini model id doesn't exist on your
+  credential's endpoint. Set `TRIPWIRE_AGENT_MODEL` to one your key serves
+  (list them: `curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=$GOOGLE_API_KEY" | jq -r '.models[].name'`).
 - Model errors / 401 → credential route not active in this shell; re-run
   `agents-cli login --interactive` or re-export `GOOGLE_API_KEY`.
 - Badge refused with a config message → `TRIPWIRE_SIGNING_KEY` (or the Ed25519
