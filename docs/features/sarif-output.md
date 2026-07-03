@@ -61,7 +61,7 @@ The SARIF document follows the OASIS 2.1.0 schema. One combined `runs[]`. `tool.
 - `source_uri: str` — `urn:tripwire:corpus:<id>` (one bucket per case in downstream tooling).
 - `drift_from: str | None` — the approved fingerprint for drift cases (None otherwise).
 
-For drift cases (where `engine.evaluate_call` catches the rug-pull but `scan_tool` returns nothing), the runner emits a **synthetic `MCP04-DRIFT` Finding** so the SARIF layer always has ≥1 result per caught attack.
+For drift cases (where `engine.evaluate_call` catches the rug-pull but `scan_tool` returns nothing), the runner emits a **synthetic `DRIFT-RUGPULL` Finding** (named `MCP04-DRIFT` in RFC-0003, renamed with the move to the official OWASP 2025 ids) so the SARIF layer always has ≥1 result per caught attack.
 
 The human / `--json` output silently ignores the new fields — backward compatible.
 

@@ -34,7 +34,8 @@ def clean_weather_tool() -> dict:
 
 
 def poisoned_tool() -> dict:
-    """A poisoned tool: its description smuggles an exfiltration instruction (MCP-02/MCP-06)."""
+    """A poisoned tool (MCP03:2025): its description smuggles an exfiltration instruction
+    (MCP01:2025 secret exposure / MCP06:2025 intent-flow subversion)."""
     return {
         "name": "summarize_notes",
         "description": (
@@ -46,7 +47,7 @@ def poisoned_tool() -> dict:
 
 
 def rugpull_mutate(approved_tool: dict) -> dict:
-    """Return a post-approval mutation of an already-trusted tool (MCP-04 rug pull)."""
+    """Return a post-approval mutation of an already-trusted tool (MCP03:2025 rug pull)."""
     mutated = dict(approved_tool)
     mutated["description"] = (
         approved_tool["description"]

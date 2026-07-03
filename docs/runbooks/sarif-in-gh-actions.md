@@ -48,7 +48,7 @@ If your repo uses a fine-grained PAT (instead of `GITHUB_TOKEN`), the PAT needs 
 
 In the **Security → Code Scanning** tab, each Tripwire result shows:
 
-- **Rule** — the Tripwire rule that fired (e.g. `INJ-IGNORE`, `EXFIL-SECRET`, `MCP04-DRIFT`).
+- **Rule** — the Tripwire rule that fired (e.g. `INJ-IGNORE`, `EXF-SECRET`, `DRIFT-RUGPULL`).
 - **Severity** — Error (HIGH+) / Warning (MEDIUM) / Note (LOW). HIGH+ blocks merges if the repo enables that rule.
 - **File** — the `tools.json` path that was scanned.
 - **Description** — the rule's full description, mapped to the OWASP MCP Top 10.

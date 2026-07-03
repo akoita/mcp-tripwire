@@ -32,7 +32,7 @@ The Phase 0 spec is [`.agents-cli-spec.md`](../../.agents-cli-spec.md) at the pr
 ```python
 # src/tripwire/agents/
 from tripwire.agents import (
-    create_scanner_agent,        # Agent(name="tripwire_scanner", model="gemini-3-pro", ...)
+    create_scanner_agent,        # Agent(name="tripwire_scanner", model=agent_model(), ...)
     create_redteam_agent,        # Agent(name="tripwire_redteam", ...)
     create_attestor_agent,       # Agent(name="tripwire_attestor", ...)
     scan_tool_descriptor,        # FunctionTool, returns dict
@@ -71,7 +71,7 @@ app = App(name="app", root_agent=root_agent)
 - **Verdict ≠ LLM output.** Every "block" / "allow" / "quarantine" comes from the deterministic engine. The Scanner explains, the Red-team selects, the Attestor mints — none of them *decide*. This is Hard Rule #6 (never invent metrics) extended to "never invent verdicts."
 - **Badge minting fails closed.** The Attestor returns a refused decision if `TRIPWIRE_SIGNING_KEY` is missing; user confirmation alone cannot create a badge.
 - **`[agent]` extra required** — `google-adk` is heavy (~50 transitive packages). The `[dev]` venv skips it; ADK-gated tests skip cleanly with a clear reason.
-- **Model is `gemini-3-pro`** — chosen by the stub author; not changed without an explicit ask (agents-cli convention "never change models" — see [google-agents-cli-workflow §Principle 1](https://google.github.io/agents-cli/)).
+- **Model is `gemini-pro-latest` (rolling alias) by default, overridable via `TRIPWIRE_AGENT_MODEL`** — single-sourced in [`src/tripwire/agents/_model.py`](../../src/tripwire/agents/_model.py). The original hard-coded `gemini-3-pro` never existed on the AI Studio `v1beta` endpoint, and its pinned replacement `gemini-3-pro-preview` was retired upstream days later — both failed every playground turn with `404 NOT_FOUND`. A rolling alias survives preview retirements; pin via the env var when reproducibility matters more than availability.
 - **No conversation memory beyond the session.** Memory Bank integration is a v1.x concern.
 - **HITL is per-call, not per-session.** The Attestor prompts the operator every badge mint, not once per session. That's deliberate (Hard Rule #1: every trust action is explicit).
 

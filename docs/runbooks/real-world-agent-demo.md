@@ -1,7 +1,7 @@
-# Real-world agent demo: Playwright MCP + Google deployment
+# Real-world agent demo: Playwright MCP through the proxy
 
-> Goal: prove Tripwire against a useful MCP server and show the Google deploy
-> paths without pretending test fixtures are production.
+> Goal: prove Tripwire against a useful, published MCP server — without
+> pretending test fixtures are production.
 
 ## Why this runbook exists
 
@@ -75,83 +75,13 @@ What this does **not** prove:
 The rule is simple: **real environment, non-production data, least-privilege
 credentials, no secrets on screen**.
 
-## Google deployment paths
+## Deployment and recording
 
-Tripwire has two related but different deploy surfaces.
-
-### Path A — ADK coordinator on Agent Runtime
-
-Use this when the demo goal is "a real Google-hosted agent routes to Scanner,
-Red-team, and Attestor."
-
-Dry-run verified locally:
-
-```bash
-agents-cli deploy \
-  --dry-run \
-  --deployment-target agent_runtime \
-  --project resonate-staging-499404 \
-  --region us-east1 \
-  --service-name mcp-tripwire-agent \
-  --no-confirm-project
-```
-
-The dry-run reports an Agent Runtime deployment with CPU/memory/concurrency
-settings. A real deployment requires:
-
-- GCP project with billing enabled.
-- Authenticated `gcloud` / `agents-cli`.
-- Gemini/Vertex configuration for the ADK model.
-- `TRIPWIRE_SIGNING_KEY` from Secret Manager, not a literal env var.
-
-Do **not** use `demo-only` as a deployed signing key.
-
-### Path B — Cloud Run gateway
-
-Use this when the demo goal is "an HTTP trust gateway exposes `/scan`,
-`/verify`, `/eval`, and `/mcp/sse/*`."
-
-Dry-run verified locally:
-
-```bash
-agents-cli deploy \
-  --dry-run \
-  --project resonate-staging-499404 \
-  --region us-east1 \
-  --no-confirm-project \
-  --port 8080
-```
-
-The dry-run maps to `gcloud run deploy mcp-tripwire --source .` with the
-manifest's Cloud Run settings. A real deployment should pass secrets using
-`--secrets`, for example:
-
-```bash
-agents-cli deploy \
-  --project "$GOOGLE_CLOUD_PROJECT" \
-  --region us-east1 \
-  --secrets TRIPWIRE_SIGNING_KEY=tripwire-signing-key:latest \
-  --port 8080
-```
-
-Post-deploy smoke:
-
-```bash
-curl "$SERVICE_URL/healthz"
-curl "$SERVICE_URL/eval"
-```
-
-Only flip README wording from "staged" to "implemented" after those live
-endpoints work.
-
-## Video path
-
-For a judge-facing recording, use this order:
-
-1. `make demo-real-mcp` — real useful MCP, real web action.
-2. `make demo-proxy` or `make demo-proxy-sse` — canary attack and rug-pull proof.
-3. `make demo-adk` — real ADK agent layer over the deterministic tools.
-4. `make eval` — measured security scoreboard.
-
-That sequence answers both concerns: "does this work on a real MCP?" and "does
-it still block hostile behavior?"
+- **Deploying Tripwire** (local Docker, Cloud Run via `agents-cli deploy`, the
+  hosted SSE gateway, or the Agent Runtime target for the ADK coordinator) is
+  the [deploy runbook](deploy.md)'s job — one source of truth for commands,
+  env vars, and secrets handling.
+- **The judge-facing recording order** is scripted beat-by-beat in
+  [`docs/video-script.md`](../video-script.md); a live Gemini-driven ADK
+  session has its own operator script in
+  [adk-live-playground-demo.md](adk-live-playground-demo.md).

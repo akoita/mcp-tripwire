@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from ..corpus import DEFAULT_CORPUS, load_corpus
 from ..owasp import title as owasp_title
+from ._model import agent_model
 
 SYSTEM_PROMPT = (
     "You are the Tripwire Red-Team. The operator asks for adversarial MCP tool "
@@ -96,13 +97,11 @@ def _category_to_owasp(category: str) -> str:
     """
     cat = category.lower()
     if "exfil" in cat or "credential" in cat or "env" in cat:
-        return owasp_title("MCP-06")
-    if "instruction" in cat or "invisible" in cat or "system-prompt" in cat:
-        return owasp_title("MCP-01")
-    if "rug" in cat or "drift" in cat:
-        return owasp_title("MCP-04")
-    if "hidden" in cat:
-        return owasp_title("MCP-10")
+        return owasp_title("MCP01:2025")
+    if "instruction" in cat or "system-prompt" in cat or "hidden" in cat:
+        return owasp_title("MCP06:2025")
+    if "invisible" in cat or "rug" in cat or "drift" in cat or "shadow" in cat:
+        return owasp_title("MCP03:2025")
     return category
 
 
@@ -112,7 +111,7 @@ def create_redteam_agent():
 
     return Agent(
         name="tripwire_redteam",
-        model="gemini-3-pro",
+        model=agent_model(),
         description=AGENT_DESCRIPTION,
         instruction=SYSTEM_PROMPT,
         tools=[seed_probes, propose_probe],

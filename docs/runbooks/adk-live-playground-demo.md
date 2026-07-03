@@ -50,8 +50,8 @@ Paste into the chat:
 **Expect:** the coordinator routes to `tripwire_scanner`, which calls
 `scan_tool_descriptor` once and reports deterministic findings — instruction
 override (INJ-IGNORE), secret exfiltration (EXF-SECRET / EXF-URL), and
-hidden-from-user (INJ-HIDE) — grouped under OWASP MCP-01 and MCP-06, worst
-severity `critical`, with the evidence snippets quoted verbatim.
+hidden-from-user (INJ-HIDE) — grouped under OWASP MCP06:2025 and MCP01:2025,
+worst severity `critical`, with the evidence snippets quoted verbatim.
 
 ### Act 2 — Attestor refuses, even with human approval
 
@@ -116,6 +116,22 @@ in the tool response is the ground truth.
 ## Troubleshooting
 
 - `ImportError: google.adk` → `uv sync --extra agent`.
+- `pyenv: adk: command not found` (exit 127) at playground launch → the
+  `[agent]` extra was pruned from `.venv` (any `make check` does this via
+  `uv sync --extra dev`); re-run `uv sync --extra dev --extra agent`.
+- `404 NOT_FOUND: models/<id> is not found for API version v1beta` on the
+  first chat turn → the configured Gemini model id doesn't exist on your
+  credential's endpoint. Set `TRIPWIRE_AGENT_MODEL` to one your key serves
+  (list them: `curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=$GOOGLE_API_KEY" | jq -r '.models[].name'`).
+  Caveat: ListModels still lists *retired* preview ids that 404 at chat time
+  ("no longer available") — only a live `generateContent` call proves an id
+  works. Rolling aliases (`gemini-pro-latest`, the default) survive preview
+  retirements.
+- `503 UNAVAILABLE: This model is currently experiencing high demand` →
+  transient capacity on Google's side, not a Tripwire problem. Resend the
+  message; if it persists (e.g. mid-recording), pin a stable GA model:
+  `export TRIPWIRE_AGENT_MODEL=gemini-2.5-pro` and relaunch. Model choice
+  never changes verdicts — the LLM narrates, the engine decides.
 - Model errors / 401 → credential route not active in this shell; re-run
   `agents-cli login --interactive` or re-export `GOOGLE_API_KEY`.
 - Badge refused with a config message → `TRIPWIRE_SIGNING_KEY` (or the Ed25519

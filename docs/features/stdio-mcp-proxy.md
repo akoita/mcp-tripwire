@@ -73,13 +73,42 @@ A non-ALLOW `tools/call` becomes:
 
 The structured stderr log emits one JSON line per block / quarantine event so an operator can `grep` without parsing the JSON-RPC stream.
 
+## Use it with your own agent
+
+You do **not** reconfigure the LLM or the agent framework. Tripwire is a transparent proxy: your MCP client already launches an MCP server via a `command` + `args`; you point that at `tripwire proxy` and hand it the original server command after a `--`. The client talks to Tripwire exactly as if it were the server.
+
+```bash
+# Before — client talks straight to the server:
+npx -y @playwright/mcp@latest
+
+# After — same server, now guarded:
+tripwire proxy -- npx -y @playwright/mcp@latest
+```
+
+In an MCP client's server config (Claude Desktop, Cursor, Cline, agents-cli, …), that is:
+
+```jsonc
+{
+  "mcpServers": {
+    "playwright-guarded": {
+      "command": "tripwire",
+      "args": ["proxy", "--", "npx", "-y", "@playwright/mcp@latest"],
+      "env": { "TRIPWIRE_SIGNING_KEY": "your-shared-secret" }
+    }
+  }
+}
+```
+
+The proxy needs a signing backend so it can mint badges — set one of `TRIPWIRE_PRIVATE_KEY_PATH` (Ed25519, preferred), `TRIPWIRE_SIGNING_KEY` (HMAC), or `TRIPWIRE_ALLOW_DEV_KEY=1` (dev only). Guard logs go to **stderr**, so the stdout JSON-RPC channel the client reads stays clean. Everything downstream is the trust loop already documented above: poisoned tools are stripped at `tools/list`, rug-pulls are quarantined with JSON-RPC `-32001`, and approved tools carry a `_tripwire_badge`.
+
 ## Surfaces
 
 | Surface | How to reach it |
 |---|---|
 | `make demo-proxy` | `examples/demo_proxy.py` spawns `examples/vulnerable_mcp_server.py` through the bridge with in-memory pipes (no real stdio attach required). The "operator runbook" version of the proof moment. |
 | `make demo-real-mcp` | `examples/demo_real_mcp_playwright.py` starts Microsoft Playwright MCP through `npx`, routes it through Tripwire, badges the real browser tool catalog, and calls `browser_navigate` against `https://example.com`. |
-| Production | `python -m tripwire.proxy …` (CLI wrapper in scope for v0.3 multi-upstream). For now, library use: `await StdioTripwireProxy(engine).serve(["python", "my_mcp_server.py"])`. |
+| Production (CLI) | `tripwire proxy -- <server-cmd> [args...]` — the drop-in wiring for a real MCP client (see [Use it with your own agent](#use-it-with-your-own-agent)). |
+| Production (library) | `await StdioTripwireProxy(engine).serve(["python", "my_mcp_server.py"])` — when you build the engine yourself. |
 | Tests | `proxy.bridge(...)` accepts in-memory streams, exercised by [`tests/integration/test_proxy_bridge.py`](../../tests/integration/test_proxy_bridge.py). |
 
 ## Verification

@@ -16,6 +16,7 @@ from google.adk.apps import App
 
 from app.app_utils.telemetry import setup_telemetry
 from tripwire.agents import (
+    agent_model,
     create_attestor_agent,
     create_redteam_agent,
     create_scanner_agent,
@@ -48,7 +49,7 @@ COORDINATOR_DESCRIPTION = (
 
 root_agent = Agent(
     name="root_agent",
-    model="gemini-3-pro",
+    model=agent_model(),
     description=COORDINATOR_DESCRIPTION,
     instruction=COORDINATOR_INSTRUCTION,
     sub_agents=[

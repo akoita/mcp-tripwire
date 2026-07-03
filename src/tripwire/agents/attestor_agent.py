@@ -10,6 +10,7 @@ human ticks the confirmation box.
 from __future__ import annotations
 
 from ..engine import TripwireEngine
+from ._model import agent_model
 
 SYSTEM_PROMPT = (
     "You are the Tripwire Attestor. The operator asks you to issue a signed "
@@ -69,7 +70,7 @@ def create_attestor_agent():
 
     return Agent(
         name="tripwire_attestor",
-        model="gemini-3-pro",
+        model=agent_model(),
         description=AGENT_DESCRIPTION,
         instruction=SYSTEM_PROMPT,
         tools=[FunctionTool(issue_if_clean, require_confirmation=True)],

@@ -29,3 +29,6 @@ artifacts/grade_results/*
 # Claude Code internals (worktrees, local session state)
 .claude/worktrees/
 .claude/settings.local.json
+
+# ADK web playground local state (sessions, eval history)
+.adk/

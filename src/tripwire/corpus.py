@@ -5,8 +5,10 @@ the engine's approval step, and reports REAL counts: N/M attacks blocked, plus a
 false-positives on clean tools. `tripwire ci` fails the build if any attack survives.
 
 Per RFC-0003 §"Prerequisite — corpus row enrichment", every row also carries the
-findings that fired (or a synthetic `MCP04-DRIFT` Finding for drift cases where the
-scanner produces nothing), the source URI for the case (so SARIF results can
+findings that fired (or a synthetic `DRIFT-RUGPULL` Finding for drift cases where
+the scanner produces nothing — named `MCP04-DRIFT` in the RFC, renamed when the
+taxonomy moved to the official OWASP MCP Top 10 (2025) ids), the source URI for
+the case (so SARIF results can
 attribute back to it), and the approved fingerprint for drift cases. The SARIF
 layer ([`tripwire.sarif`](sarif.py)) consumes these fields; the human / `--json`
 output ignores them silently.
@@ -50,22 +52,23 @@ def load_corpus(path: str | Path = DEFAULT_CORPUS) -> list[dict]:
 
 
 def _synthetic_drift_finding(case: dict, approved_fp: str) -> Finding:
-    """Build the synthetic MCP04-DRIFT Finding for a quarantined drift case.
+    """Build the synthetic DRIFT-RUGPULL Finding for a quarantined drift case.
 
     The scanner produces no Finding for the post-mutation tool (rug-pull defense
     runs in `engine.evaluate_call`, not in `scan_tool`). The SARIF layer still
     needs ≥1 Finding per caught attack so the result attributes correctly —
-    this synthetic one fills that gap and carries the OWASP MCP-04 mapping
-    plus the fingerprint diff as evidence.
+    this synthetic one fills that gap and carries the OWASP MCP03:2025
+    (Tool Poisoning — contract/schema tampering) mapping plus the fingerprint
+    diff as evidence.
     """
     mutated = case.get("mutate_to", {})
     observed_fp = fingerprint(mutated) if isinstance(mutated, dict) else "<n/a>"
     name = (mutated or case.get("tool", {})).get("name", "<unnamed>")
     return Finding(
-        rule="MCP04-DRIFT",
+        rule="DRIFT-RUGPULL",
         title="Rug pull — schema drift since approval",
         severity=Severity.HIGH,
-        owasp="MCP-04",
+        owasp="MCP03:2025",
         evidence=(
             f"fingerprint mismatch (approved={approved_fp[:16]}…, observed={observed_fp[:16]}…)"
         ),
@@ -90,7 +93,7 @@ def run_corpus(cases: list[dict], *, signing_key: str = "ci-only") -> CorpusResu
       - `findings`: the scanner output for the *decision-driving* tool
         descriptor (post-mutation for drift cases). Empty list for clean
         ALLOW cases. For caught drift cases the scanner returns nothing,
-        so a synthetic MCP04-DRIFT Finding is added.
+        so a synthetic DRIFT-RUGPULL Finding is added.
       - `source_uri`: `urn:tripwire:corpus:<case_id>` — per-case URI so SARIF
         consumers can group/filter by the originating corpus case.
       - `drift_from`: the approved fingerprint for drift cases (None otherwise).

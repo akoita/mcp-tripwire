@@ -80,13 +80,12 @@ def test_scan_poisoned_groups_by_owasp_category(tmp_path: Path):
     assert rc == 1
     # Output groups under an OWASP MCP heading with the human title.
     # We accept any of the relevant categories the detector might flag.
-    assert any(f"MCP-0{n}" in out for n in (1, 2, 6)), (
+    assert any(owasp_id in out for owasp_id in ("MCP01:2025", "MCP03:2025", "MCP06:2025")), (
         f"expected an OWASP MCP category heading, got:\n{out}"
     )
     # The human-readable title should appear, not just the ID.
     assert any(
-        title in out
-        for title in ("Tool Poisoning", "Prompt / Tool-Description Injection", "Sensitive Data")
+        title in out for title in ("Tool Poisoning", "Intent Flow Subversion", "Secret Exposure")
     )
 
 
@@ -208,7 +207,7 @@ def test_ci_sarif_covers_every_corpus_case_with_attribution():
         assert r["properties"]["tripwire_case"]["id"]
     case_ids = {r["properties"]["tripwire_case"]["id"] for r in results}
     # d1 is the drift case; must be present even though scan_tool returns
-    # nothing for the mutated descriptor (synthetic MCP04-DRIFT covers it).
+    # nothing for the mutated descriptor (synthetic DRIFT-RUGPULL covers it).
     assert "d1" in case_ids, f"d1 drift case missing from SARIF; got: {sorted(case_ids)}"
     assert rc in (0, 1)
 
@@ -329,3 +328,65 @@ def test_verify_pub_missing_file_returns_invalid(tmp_path: Path):
     )
     assert rc == EXIT_BADGE_INVALID == 3
     assert "cannot read" in out
+
+
+# --- proxy ----------------------------------------------------------------
+
+from contextlib import redirect_stderr  # noqa: E402
+
+_SIGNING_ENV = {
+    "TRIPWIRE_SIGNING_KEY": None,
+    "TRIPWIRE_PRIVATE_KEY_PATH": None,
+    "TRIPWIRE_ALLOW_DEV_KEY": None,
+}
+
+
+def _run_err(*argv: str, env: dict[str, str | None] | None = None) -> tuple[int, str]:
+    """Run the CLI capturing stderr (proxy diagnostics go to stderr)."""
+    saved = {k: os.environ.get(k) for k in (env or {})}
+    if env:
+        for k, v in env.items():
+            os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+    try:
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            rc = main(list(argv))
+        return rc, buf.getvalue()
+    finally:
+        for k, v in saved.items():
+            os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+
+
+def test_proxy_no_command_fails_with_usage():
+    rc, err = _run_err("proxy", env={**_SIGNING_ENV, "TRIPWIRE_ALLOW_DEV_KEY": "1"})
+    assert rc == 1
+    assert "no upstream MCP server command" in err
+    assert "tripwire proxy --" in err
+
+
+def test_proxy_requires_signing_backend():
+    """No signing env at all → fail closed with the config guidance, before spawning."""
+    rc, err = _run_err("proxy", "--", "true", env=_SIGNING_ENV)
+    assert rc == 1
+    assert "No signing backend configured" in err
+
+
+def test_proxy_strips_double_dash_and_dispatches(monkeypatch: pytest.MonkeyPatch):
+    """The `--` separator is dropped; the bare server command reaches serve()."""
+    captured: dict[str, list[str]] = {}
+
+    async def fake_serve(self, command, *, log=None):
+        captured["command"] = command
+        return 0
+
+    monkeypatch.setattr("tripwire.proxy.StdioTripwireProxy.serve", fake_serve)
+    rc, _ = _run_err(
+        "proxy",
+        "--",
+        "npx",
+        "-y",
+        "@playwright/mcp@latest",
+        env={**_SIGNING_ENV, "TRIPWIRE_SIGNING_KEY": KEY},
+    )
+    assert rc == 0
+    assert captured["command"] == ["npx", "-y", "@playwright/mcp@latest"]
