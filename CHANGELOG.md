@@ -3,6 +3,9 @@
 All notable changes to this project. Format: [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+### Added
+- `tripwire proxy -- <server-cmd> [args...]` CLI command — the drop-in wiring to guard a real MCP server. Point any MCP client's `mcpServers` config at it (`command: "tripwire", args: ["proxy", "--", "npx", ...]`) and every `tools/list` is vetted and every `tools/call` re-fingerprinted before it reaches the upstream. Wraps the already-tested `StdioTripwireProxy.serve()`; resolves its signing backend from the standard env vars. Docs: `docs/features/stdio-mcp-proxy.md#use-it-with-your-own-agent`.
+
 ### Fixed
 - ADK agents no longer hard-code `gemini-3-pro` (a model id absent from the AI Studio `v1beta` endpoint — every live playground turn failed with `404 NOT_FOUND`). The model is single-sourced in `tripwire.agents.agent_model()`, overridable via `TRIPWIRE_AGENT_MODEL`. The default is the rolling alias `gemini-pro-latest`: the first pinned replacement (`gemini-3-pro-preview`) was retired upstream immediately after, proving pinned previews 404 the same way.
 
