@@ -81,7 +81,7 @@ credentials, no secrets on screen**.
   hosted SSE gateway, or the Agent Runtime target for the ADK coordinator) is
   the [deploy runbook](deploy.md)'s job — one source of truth for commands,
   env vars, and secrets handling.
-- **The judge-facing recording order** is scripted beat-by-beat in
-  [`docs/video-script.md`](../video-script.md); a live Gemini-driven ADK
+- **A beat-by-beat recording order** is scripted in the archived
+  [video script](../archive/kaggle-submission/video-script.md); a live Gemini-driven ADK
   session has its own operator script in
   [adk-live-playground-demo.md](adk-live-playground-demo.md).

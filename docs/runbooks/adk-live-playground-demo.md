@@ -139,9 +139,9 @@ in the tool response is the ground truth.
 - Never paste real credentials or real tool payloads into the playground —
   demo descriptors above are canary-only (Hard Rule #4).
 
-## Relation to the submission video
+## Relation to the credential-free demo
 
-The recorded video keeps the credential-free `make demo-adk` beat: it is
-deterministic, reproducible by judges with zero setup, and has nothing
-sensitive on screen. This live session is the interactive counterpart for an
-operator (or judge) who wants to see Gemini genuinely driving the coordinator.
+The `make demo-adk` beat is deterministic, reproducible with zero setup, and has
+nothing sensitive on screen — the right default for CI and for anyone evaluating
+the project quickly. This live session is the interactive counterpart, for an
+operator who wants to see Gemini genuinely driving the coordinator end to end.

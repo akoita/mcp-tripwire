@@ -12,7 +12,7 @@ It keeps checking a tool *after* you approve it, and hands you signed, portable 
 </p>
 <p align="center"><em>One command — <a href="docs/features/stdio-mcp-proxy.md"><code>make demo-proxy</code></a>: the poisoned tool is stripped, the clean tool is badged, and a post-approval <strong>rug-pull is quarantined</strong> — real output, no edits.</em></p>
 
-Built for the Kaggle **AI Agents Intensive Vibe Coding Capstone** (Freestyle track). Embodies the course's "Factory Model": the engineering is the **harness** around the model, not just the model.
+Open source (Apache-2.0), and built to be **verifiable rather than trusted**: a deterministic, dependency-free core, real measured numbers, and a design you can audit end to end. Under active development toward production use.
 
 | Headline | Number |
 |---|---|
@@ -123,18 +123,19 @@ You don't reconfigure the LLM. Tripwire is a transparent proxy: point your MCP c
 
 The client speaks to Tripwire as if it were the server; every `tools/list` is vetted and every `tools/call` re-fingerprinted before it reaches the upstream. Details and the signing-key options are in the [stdio proxy feature page](docs/features/stdio-mcp-proxy.md#use-it-with-your-own-agent).
 
-## Course concepts demonstrated
+## Capabilities at a glance
 
-| Concept | Where |
+Each capability, and where it lives in the tree:
+
+| Capability | Where |
 |---|---|
-| **MCP server / gateway** | [`src/tripwire/proxy.py`](src/tripwire/proxy.py) — transparent stdio bridge with `tools/list` filter + `tools/call` drift short-circuit |
-| **Security features** | the entire product — [`detection.py`](src/tripwire/detection.py), [`engine.py`](src/tripwire/engine.py), [`attestation.py`](src/tripwire/attestation.py), [`harness_guardrails.py`](scripts/harness_guardrails.py) |
-| **Agent skills (`.agents/skills/`)** | three skills: `scanning_mcp_servers`, `triaging_owasp_mcp_findings`, `issuing_mcp_trust_badge` |
-| **Agents CLI** | project scaffolded with `agents-cli scaffold enhance .`; spec in [.agents-cli-spec.md](.agents-cli-spec.md); manifest in [agents-cli-manifest.yaml](agents-cli-manifest.yaml) |
-| **Multi-agent (ADK)** | Scanner / Red-team / Attestor + coordinator in [`src/tripwire/agents/`](src/tripwire/agents/) and [`app/agent.py`](app/agent.py); Attestor uses `FunctionTool(require_confirmation=True)` for HITL badge minting |
-| **Two-layer eval** | deterministic `pytest` (75 default tests, 139 with `[agent]` + `[signing]`) + non-deterministic `agents-cli eval` datasets in [`tests/eval/datasets/`](tests/eval/datasets/) |
-| **Deployability** | [`Dockerfile`](Dockerfile), [`app/fast_api_app.py`](app/fast_api_app.py), Cloud Run target in [agents-cli-manifest.yaml](agents-cli-manifest.yaml) |
-| **Quality gates** | pre-commit (`ruff`, secret detection, [`no_commit_to_main.sh`](scripts/no_commit_to_main.sh)) + GitHub Actions (`ci`, `security`, `ai-review` under [.github/workflows/](.github/workflows/)) |
+| **Transparent MCP gateway** | [`src/tripwire/proxy.py`](src/tripwire/proxy.py) — stdio + HTTP/SSE bridge with `tools/list` filter + `tools/call` drift short-circuit |
+| **Deterministic security core** | [`detection.py`](src/tripwire/detection.py), [`engine.py`](src/tripwire/engine.py), [`attestation.py`](src/tripwire/attestation.py) + the signing backends in [`signing/`](src/tripwire/signing/) |
+| **Reusable agent skills** | three under [`.agents/skills/`](.agents/skills/): `scanning_mcp_servers`, `triaging_owasp_mcp_findings`, `issuing_mcp_trust_badge` |
+| **Multi-agent layer** | Scanner / Red-team / Attestor + coordinator in [`src/tripwire/agents/`](src/tripwire/agents/) and [`app/agent.py`](app/agent.py); Attestor uses `FunctionTool(require_confirmation=True)` for human-in-the-loop badge minting |
+| **Two-layer evaluation** | deterministic `pytest` (75 default tests, 139 with `[agent]` + `[signing]`) + non-deterministic eval datasets in [`tests/eval/datasets/`](tests/eval/datasets/) |
+| **Deployability** | [`Dockerfile`](Dockerfile), [`app/fast_api_app.py`](app/fast_api_app.py); local Docker verified, Cloud Run staged (see the [feature catalog](docs/features/README.md)) |
+| **Quality gates as code** | pre-commit (`ruff`, secret detection, [`no_commit_to_main.sh`](scripts/no_commit_to_main.sh), [`harness_guardrails.py`](scripts/harness_guardrails.py)) + GitHub Actions (`ci`, `security`, `ai-review` under [.github/workflows/](.github/workflows/)) |
 
 ## Repo layout
 
@@ -161,7 +162,7 @@ Full index: [`docs/README.md`](docs/README.md). The main entry points, by what y
 | Decide what to trust, and why (threat model, assumptions, limits) | [Trust model — `docs/TRUST_MODEL.md`](docs/TRUST_MODEL.md) |
 | Run it yourself — deploy, demos, a live ADK session | [Runbooks](docs/runbooks/): [deploy](docs/runbooks/deploy.md) · [real-MCP demo](docs/runbooks/real-world-agent-demo.md) · [ADK live playground](docs/runbooks/adk-live-playground-demo.md) |
 | Understand *why* it's built this way | [ADRs](docs/adr/) (decisions) · [RFCs](docs/rfc/) (designs, e.g. the stdio bridge and Ed25519) |
-| Read the capstone story end-to-end | [Kaggle writeup — `docs/writeup.md`](docs/writeup.md) |
+| Read where the project came from | [Archive](docs/archive/) — the original submission artifacts, kept for history |
 | See the engineering rules every coding agent follows | [`AGENTS.md`](AGENTS.md) + [`docs/AGENTIC_SDLC.md`](docs/AGENTIC_SDLC.md) |
 | Check where the project is and where it's going | [STATUS](docs/STATUS.md) · [ROADMAP](docs/ROADMAP.md) |
 
