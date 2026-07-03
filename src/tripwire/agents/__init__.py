@@ -13,12 +13,15 @@ core, so they can be unit-tested without the `[agent]` extra installed.
 
 from __future__ import annotations
 
+from ._model import DEFAULT_AGENT_MODEL, agent_model
 from .attestor_agent import create_attestor_agent, issue_if_clean
 from .redteam_agent import create_redteam_agent, propose_probe, seed_probes
 from .scanner_agent import create_scanner_agent, scan_tool_descriptor
 
 __all__ = [
+    "DEFAULT_AGENT_MODEL",
     "adk_available",
+    "agent_model",
     "create_scanner_agent",
     "create_redteam_agent",
     "create_attestor_agent",

@@ -12,6 +12,7 @@ from collections import Counter
 
 from ..detection import max_severity, scan_tool
 from ..owasp import title as owasp_title
+from ._model import agent_model
 
 SYSTEM_PROMPT = (
     "You are the Tripwire Scanner. For every MCP tool the operator gives you, "
@@ -63,7 +64,7 @@ def create_scanner_agent():
 
     return Agent(
         name="tripwire_scanner",
-        model="gemini-3-pro",
+        model=agent_model(),
         description=AGENT_DESCRIPTION,
         instruction=SYSTEM_PROMPT,
         tools=[scan_tool_descriptor],

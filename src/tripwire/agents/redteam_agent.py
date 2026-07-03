@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from ..corpus import DEFAULT_CORPUS, load_corpus
 from ..owasp import title as owasp_title
+from ._model import agent_model
 
 SYSTEM_PROMPT = (
     "You are the Tripwire Red-Team. The operator asks for adversarial MCP tool "
@@ -110,7 +111,7 @@ def create_redteam_agent():
 
     return Agent(
         name="tripwire_redteam",
-        model="gemini-3-pro",
+        model=agent_model(),
         description=AGENT_DESCRIPTION,
         instruction=SYSTEM_PROMPT,
         tools=[seed_probes, propose_probe],

@@ -86,6 +86,18 @@ def test_scan_tool_descriptor_output_is_json_serialisable():
     json.dumps(scan_tool_descriptor(_poisoned()))  # must not raise
 
 
+# --- agent_model ------------------------------------------------------------
+
+
+def test_agent_model_defaults_and_env_override(monkeypatch: pytest.MonkeyPatch):
+    from tripwire.agents import DEFAULT_AGENT_MODEL, agent_model
+
+    monkeypatch.delenv("TRIPWIRE_AGENT_MODEL", raising=False)
+    assert agent_model() == DEFAULT_AGENT_MODEL
+    monkeypatch.setenv("TRIPWIRE_AGENT_MODEL", "gemini-3-flash-preview")
+    assert agent_model() == "gemini-3-flash-preview"
+
+
 # --- seed_probes / propose_probe ------------------------------------------
 
 
