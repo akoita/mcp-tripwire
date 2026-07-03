@@ -123,6 +123,15 @@ in the tool response is the ground truth.
   first chat turn → the configured Gemini model id doesn't exist on your
   credential's endpoint. Set `TRIPWIRE_AGENT_MODEL` to one your key serves
   (list them: `curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=$GOOGLE_API_KEY" | jq -r '.models[].name'`).
+  Caveat: ListModels still lists *retired* preview ids that 404 at chat time
+  ("no longer available") — only a live `generateContent` call proves an id
+  works. Rolling aliases (`gemini-pro-latest`, the default) survive preview
+  retirements.
+- `503 UNAVAILABLE: This model is currently experiencing high demand` →
+  transient capacity on Google's side, not a Tripwire problem. Resend the
+  message; if it persists (e.g. mid-recording), pin a stable GA model:
+  `export TRIPWIRE_AGENT_MODEL=gemini-2.5-pro` and relaunch. Model choice
+  never changes verdicts — the LLM narrates, the engine decides.
 - Model errors / 401 → credential route not active in this shell; re-run
   `agents-cli login --interactive` or re-export `GOOGLE_API_KEY`.
 - Badge refused with a config message → `TRIPWIRE_SIGNING_KEY` (or the Ed25519
