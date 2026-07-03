@@ -20,6 +20,5 @@ Knowledge context for humans and agents (the "Knowledge" row of the context map 
   - [adk-live-playground-demo.md](runbooks/adk-live-playground-demo.md) — live Gemini-driven ADK session, scripted acts.
   - [demo-proof-moment.md](runbooks/demo-proof-moment.md) — the 3-minute in-person demo checklist.
   - [sarif-in-gh-actions.md](runbooks/sarif-in-gh-actions.md) — landing findings in GitHub Code Scanning.
-  - [pr-watchdog.md](runbooks/pr-watchdog.md) — local CI daemon when Actions is unavailable.
 
 State lives alongside this index: [STATUS.md](STATUS.md), [ROADMAP.md](ROADMAP.md), [BACKLOG.md](BACKLOG.md), [TECH_DEBT.md](TECH_DEBT.md), [SPEC.md](SPEC.md), [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md). Only the working-memory docs and tooling-required files (README, LICENSE, AGENTS.md, etc.) live at the repo root — see the `check_root_clean()` allowlist in [`scripts/harness_guardrails.py`](../scripts/harness_guardrails.py).

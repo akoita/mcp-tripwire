@@ -2,8 +2,8 @@
 # Local mirror of the GitHub Actions CI surface (ci.yml + security.yml).
 #
 # Same five gates the workflows run, on the current checkout. Used by humans
-# pre-PR (`make ci-local`) and by the pr-watchdog daemon. Exits non-zero on the
-# first failing gate — pip-audit is advisory-only and never fails the run.
+# pre-PR (`make ci-local`). Exits non-zero on the first failing gate —
+# pip-audit is advisory-only and never fails the run.
 
 set -uo pipefail
 
