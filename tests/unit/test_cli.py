@@ -328,3 +328,65 @@ def test_verify_pub_missing_file_returns_invalid(tmp_path: Path):
     )
     assert rc == EXIT_BADGE_INVALID == 3
     assert "cannot read" in out
+
+
+# --- proxy ----------------------------------------------------------------
+
+from contextlib import redirect_stderr  # noqa: E402
+
+_SIGNING_ENV = {
+    "TRIPWIRE_SIGNING_KEY": None,
+    "TRIPWIRE_PRIVATE_KEY_PATH": None,
+    "TRIPWIRE_ALLOW_DEV_KEY": None,
+}
+
+
+def _run_err(*argv: str, env: dict[str, str | None] | None = None) -> tuple[int, str]:
+    """Run the CLI capturing stderr (proxy diagnostics go to stderr)."""
+    saved = {k: os.environ.get(k) for k in (env or {})}
+    if env:
+        for k, v in env.items():
+            os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+    try:
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            rc = main(list(argv))
+        return rc, buf.getvalue()
+    finally:
+        for k, v in saved.items():
+            os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+
+
+def test_proxy_no_command_fails_with_usage():
+    rc, err = _run_err("proxy", env={**_SIGNING_ENV, "TRIPWIRE_ALLOW_DEV_KEY": "1"})
+    assert rc == 1
+    assert "no upstream MCP server command" in err
+    assert "tripwire proxy --" in err
+
+
+def test_proxy_requires_signing_backend():
+    """No signing env at all → fail closed with the config guidance, before spawning."""
+    rc, err = _run_err("proxy", "--", "true", env=_SIGNING_ENV)
+    assert rc == 1
+    assert "No signing backend configured" in err
+
+
+def test_proxy_strips_double_dash_and_dispatches(monkeypatch: pytest.MonkeyPatch):
+    """The `--` separator is dropped; the bare server command reaches serve()."""
+    captured: dict[str, list[str]] = {}
+
+    async def fake_serve(self, command, *, log=None):
+        captured["command"] = command
+        return 0
+
+    monkeypatch.setattr("tripwire.proxy.StdioTripwireProxy.serve", fake_serve)
+    rc, _ = _run_err(
+        "proxy",
+        "--",
+        "npx",
+        "-y",
+        "@playwright/mcp@latest",
+        env={**_SIGNING_ENV, "TRIPWIRE_SIGNING_KEY": KEY},
+    )
+    assert rc == 0
+    assert captured["command"] == ["npx", "-y", "@playwright/mcp@latest"]

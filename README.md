@@ -104,6 +104,25 @@ make eval                  # → "9/9 attacks blocked · 0 false-positive(s) on 
 
 The LLM is the **explainer and router**; the **verdict** always comes from the deterministic engine — so the agent layer literally cannot fabricate a finding. The demo runs without a model credential by calling the agents' tool functions directly; `agents-cli playground` uses the same code path with the LLM as the conversational front-end.
 
+### Put it in front of your own agent
+
+You don't reconfigure the LLM. Tripwire is a transparent proxy: point your MCP client's server config at `tripwire proxy` and give it the real server command after a `--`.
+
+```jsonc
+// e.g. Claude Desktop / Cursor / Cline mcpServers config
+{
+  "mcpServers": {
+    "playwright-guarded": {
+      "command": "tripwire",
+      "args": ["proxy", "--", "npx", "-y", "@playwright/mcp@latest"],
+      "env": { "TRIPWIRE_SIGNING_KEY": "your-shared-secret" }
+    }
+  }
+}
+```
+
+The client speaks to Tripwire as if it were the server; every `tools/list` is vetted and every `tools/call` re-fingerprinted before it reaches the upstream. Details and the signing-key options are in the [stdio proxy feature page](docs/features/stdio-mcp-proxy.md#use-it-with-your-own-agent).
+
 ## Course concepts demonstrated
 
 | Concept | Where |

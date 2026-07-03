@@ -1,8 +1,9 @@
-"""`tripwire` CLI — scan / verify / ci.
+"""`tripwire` CLI — scan / verify / ci / proxy.
 
     tripwire scan <manifest.json> [--sarif]              # scan; SARIF on stdout with --sarif
     tripwire verify <badge.json>                          # verify a signed trust badge
     tripwire ci [--corpus PATH] [--json | --sarif]        # run the attack corpus
+    tripwire proxy -- <server-cmd> [args...]              # guard a real MCP server over stdio
 
 The CLI is the agents-cli "Agent skill"-style entrypoint and the CI gate.
 Signing key comes from $TRIPWIRE_SIGNING_KEY (Hard Rule #3 — never hardcoded).
@@ -17,6 +18,7 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import os
 import sys
@@ -26,6 +28,7 @@ from pathlib import Path
 from . import attestation
 from .corpus import DEFAULT_CORPUS, load_corpus, run_corpus
 from .detection import Finding, Severity, scan_tool
+from .engine import TripwireEngine
 from .owasp import title as owasp_title
 
 _KEY_ENV = "TRIPWIRE_SIGNING_KEY"
@@ -260,6 +263,43 @@ def cmd_ci(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+# --- proxy ----------------------------------------------------------------
+
+
+def cmd_proxy(args: argparse.Namespace) -> int:
+    """Guard a real MCP server: spawn ``args.server_command`` as the upstream and
+    pump JSON-RPC through the Tripwire proxy over this process's stdin/stdout.
+
+    This is the drop-in wiring for a real agent. An MCP client's server config
+    launches ``tripwire proxy -- <real server command>`` instead of the server
+    directly; the client speaks to Tripwire exactly as if it were the server,
+    and every ``tools/list`` is vetted and every ``tools/call`` re-fingerprinted
+    before it reaches the upstream. Guard logs go to stderr so they never
+    corrupt the stdio JSON-RPC channel on stdout.
+    """
+    from .proxy import StdioTripwireProxy  # noqa: PLC0415
+    from .signing import SigningConfigError, resolve_signing_backend  # noqa: PLC0415
+
+    if not args.server_command:
+        print(
+            "✗ no upstream MCP server command given.\n"
+            "  Usage: tripwire proxy -- <server-cmd> [args...]\n"
+            "  e.g.:  tripwire proxy -- npx -y @playwright/mcp@latest",
+            file=sys.stderr,
+        )
+        return EXIT_FAIL
+
+    try:
+        backend = resolve_signing_backend()
+    except SigningConfigError as exc:
+        print(f"✗ {exc}", file=sys.stderr)
+        return EXIT_FAIL
+
+    engine = TripwireEngine(signing_backend=backend)
+    proxy = StdioTripwireProxy(engine)
+    return asyncio.run(proxy.serve(args.server_command, log=sys.stderr))
+
+
 # --- entrypoint -----------------------------------------------------------
 
 
@@ -308,7 +348,30 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_ci.set_defaults(func=cmd_ci)
 
+    p_proxy = sub.add_parser(
+        "proxy",
+        help="guard a real MCP server: pump its stdio JSON-RPC through Tripwire",
+        description=(
+            "Spawn a real MCP server and sit in front of it as a transparent trust "
+            "gateway. Point your MCP client's server config at this command instead "
+            "of the server itself: every tools/list is vetted and every tools/call is "
+            "re-fingerprinted before it reaches the upstream. Needs a signing backend "
+            "(TRIPWIRE_PRIVATE_KEY_PATH, TRIPWIRE_SIGNING_KEY, or TRIPWIRE_ALLOW_DEV_KEY)."
+        ),
+    )
+    p_proxy.add_argument(
+        "server_command",
+        nargs=argparse.REMAINDER,
+        metavar="-- server-cmd [args...]",
+        help="the upstream MCP server launch command, after a literal `--`",
+    )
+    p_proxy.set_defaults(func=cmd_proxy)
+
     args = parser.parse_args(argv)
+    # argparse.REMAINDER keeps a leading "--" as the first token; drop it so the
+    # command list is the bare `npx ...` the user typed after the separator.
+    if getattr(args, "server_command", None) and args.server_command[0] == "--":
+        args.server_command = args.server_command[1:]
     return args.func(args)
 
 
