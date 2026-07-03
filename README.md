@@ -18,7 +18,7 @@ Open source (Apache-2.0), and built to be **verifiable rather than trusted**: a 
 |---|---|
 | Attack corpus blocked | **9 / 9** (`make eval`) |
 | False positives on clean tools | **0 / 4** |
-| Tests (unit + integration) | **75 passed / 46 skipped** with default `[dev]`; **139 passed** with `[agent]` + `[signing]` extras |
+| Tests (unit + integration) | **79 passed / 46 skipped** with default `[dev]`; **143 passed / 0 skipped** with `[agent]` + `[signing]` extras — both legs run in [CI](.github/workflows/ci.yml) |
 | Deterministic core dependencies | **stdlib only** (verified by `scripts/harness_guardrails.py`) |
 | Demos (each its own `make` target) | `demo` · `demo-proxy` · `demo-adk` · `demo-proxy-sse` · `demo-real-mcp` |
 
@@ -72,7 +72,7 @@ Every capability above is implemented on `main` and covered by tests; the precis
 
 ```bash
 # One-time bootstrap (uv ≥ 0.5; installs ruff + pytest)
-make check                 # lint + 75 default tests + harness guardrails
+make check                 # lint + 79 default tests + harness guardrails
 
 # The five demos — each a different face of the same trust loop
 make demo                  # engine-level: approve / evaluate_call / verify_badge (no transport)
@@ -133,7 +133,7 @@ Each capability, and where it lives in the tree:
 | **Deterministic security core** | [`detection.py`](src/tripwire/detection.py), [`engine.py`](src/tripwire/engine.py), [`attestation.py`](src/tripwire/attestation.py) + the signing backends in [`signing/`](src/tripwire/signing/) |
 | **Reusable agent skills** | three under [`.agents/skills/`](.agents/skills/): `scanning_mcp_servers`, `triaging_owasp_mcp_findings`, `issuing_mcp_trust_badge` |
 | **Multi-agent layer** | Scanner / Red-team / Attestor + coordinator in [`src/tripwire/agents/`](src/tripwire/agents/) and [`app/agent.py`](app/agent.py); Attestor uses `FunctionTool(require_confirmation=True)` for human-in-the-loop badge minting |
-| **Two-layer evaluation** | deterministic `pytest` (75 default tests, 139 with `[agent]` + `[signing]`) + non-deterministic eval datasets in [`tests/eval/datasets/`](tests/eval/datasets/) |
+| **Two-layer evaluation** | deterministic `pytest` (79 default tests, 143 with `[agent]` + `[signing]`) + non-deterministic eval datasets in [`tests/eval/datasets/`](tests/eval/datasets/) |
 | **Deployability** | [`Dockerfile`](Dockerfile), [`app/fast_api_app.py`](app/fast_api_app.py); local Docker verified, Cloud Run staged (see the [feature catalog](docs/features/README.md)) |
 | **Quality gates as code** | pre-commit (`ruff`, secret detection, [`no_commit_to_main.sh`](scripts/no_commit_to_main.sh), [`harness_guardrails.py`](scripts/harness_guardrails.py)) + GitHub Actions (`ci`, `security`, `ai-review` under [.github/workflows/](.github/workflows/)) |
 

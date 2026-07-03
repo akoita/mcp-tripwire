@@ -19,7 +19,7 @@ Everything below is on `main`, implemented and covered by tests. The precise, fi
 | HTTP gateway | `/scan` `/verify` `/eval` `/healthz`; local Docker verified | `app/fast_api_app.py`, [`docs/runbooks/deploy.md`](runbooks/deploy.md) |
 | Harness | hard rules machine-enforced; pre-commit no-commit-to-main; feature-catalog + root-clean guardrails | [AGENTS.md](../AGENTS.md), `scripts/harness_guardrails.py` |
 
-Measured on `main`: **75 default tests pass / 46 optional-extra skips**, **139 pass with `[agent]` + `[signing]`**, **9/9 attacks blocked · 0 false positives on 4 clean tools** (`make eval`), deterministic core stdlib-only.
+Measured on `main`: **79 default tests pass / 46 optional-extra skips**, **143 pass / 0 skips with `[agent]` + `[signing]`** (both legs run in CI), **9/9 attacks blocked · 0 false positives on 4 clean tools** (`make eval`), deterministic core stdlib-only.
 
 The **v0.2 — Credibility & integration** milestone (SARIF · Ed25519 · HTTP/SSE) is complete; design history is in the four accepted RFCs under [`docs/rfc/`](rfc/).
 
@@ -31,7 +31,7 @@ Making the shipped surface trustworthy to *run*, not just to demo. Tracked as Gi
 
 | Theme | Issue | Why it matters |
 |---|---|---|
-| CI runs the full suite | [#60](https://github.com/akoita/mcp-tripwire/issues/60) | CI installs only `[dev]`, so the tests protecting Ed25519 / SSE / HTTP-gateway / ADK never run in CI — a regression there ships green. Highest-value gap. |
+| ~~CI runs the full suite~~ ✅ | [#60](https://github.com/akoita/mcp-tripwire/issues/60) | **Done.** A `test-extras` CI leg installs `[agent]` + `[signing]` and runs the whole suite, failing if any test is skipped — so Ed25519 / SSE / HTTP-gateway / ADK are now covered in CI. |
 | Coverage reporting | [#66](https://github.com/akoita/mcp-tripwire/issues/66) | Make coverage visible so gaps are caught, not guessed. |
 | Detection depth | [#61](https://github.com/akoita/mcp-tripwire/issues/61), [#62](https://github.com/akoita/mcp-tripwire/issues/62), [#65](https://github.com/akoita/mcp-tripwire/issues/65) | Per-rule positive/negative matrix; proxy error-path tests; extend homoglyph detection from names to descriptions. |
 | Corpus breadth | [#64](https://github.com/akoita/mcp-tripwire/issues/64) | Grow the attack corpus to 50+ data-driven cases so the headline number means more. |

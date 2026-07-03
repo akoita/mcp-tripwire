@@ -1,4 +1,6 @@
-# The same `make check` gate that runs locally (lint + test + guardrails).
+# The same `make check` gate that runs locally (lint + test + guardrails),
+# plus a full-extras leg so the [agent]/[signing] test suites are verified
+# in CI instead of silently skipped (issue #60).
 # Pin actions to SHAs in production; tags used here for readability.
 name: ci
 on:
@@ -10,6 +12,9 @@ permissions:
   contents: read   # least privilege
 
 jobs:
+  # Base leg — stdlib-only install path. Verifies lint + guardrails + the
+  # deterministic core tests that run without any optional extra. The
+  # ~46 extras-gated tests skip here by design (that path is proven below).
   check:
     runs-on: ubuntu-latest
     strategy:
@@ -21,7 +26,46 @@ jobs:
         uses: astral-sh/setup-uv@v7
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
-      - name: Install
+      - name: Install (base — [dev] only)
         run: uv sync --extra dev
       - name: make check (lint + test + guardrails)
         run: make check
+
+  # Full-extras leg — installs every optional extra and runs the WHOLE
+  # pytest suite. The point of this job is that the Ed25519 / SSE / HTTP /
+  # ADK tests actually execute: the step fails if ANY test is skipped,
+  # which is how we catch a new extras-gated test whose extra was never
+  # added to CI (issue #60).
+  test-extras:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+      - name: Install (all extras — [dev] + [agent] + [signing])
+        run: uv sync --extra dev --extra agent --extra signing
+      - name: Full test suite — must run with zero skips
+        shell: bash
+        run: |
+          set -euo pipefail
+          # A real test failure fails here via `set -e`. On success we parse
+          # the machine-readable JUnit report (stdout is unreliable — the
+          # project's addopts="-q" suppresses the summary footer under a pipe).
+          uv run pytest --junitxml=pytest-extras.xml
+          uv run python - <<'PY'
+          import sys, xml.etree.ElementTree as ET
+          root = ET.parse("pytest-extras.xml").getroot()
+          # root.iter handles both a <testsuites> wrapper and a bare <testsuite> root.
+          skipped = sum(int(s.get("skipped", 0)) for s in root.iter("testsuite"))
+          tests = sum(int(s.get("tests", 0)) for s in root.iter("testsuite"))
+          print(f"::notice::all-extras leg ran {tests} tests, {skipped} skipped")
+          if skipped:
+              print("::error::Tests were skipped in the all-extras leg — an "
+                    "optional extra is missing from CI (see issue #60).")
+              sys.exit(1)
+          PY

@@ -8,6 +8,7 @@ build/
 .venv/
 .pytest_cache/
 .ruff_cache/
+pytest-extras.xml   # CI-only JUnit report from the all-extras leg
 
 # Secrets & local config (Hard Rule #3)
 .env
