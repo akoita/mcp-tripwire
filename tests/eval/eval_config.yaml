@@ -30,9 +30,9 @@ custom_metrics:
   # LLM-as-judge (LLMMetric) for the quality of the drift/poisoning explanation.
   - name: explanation_quality
     type: LLMMetric
-    # Judge model — like the agents' TRIPWIRE_AGENT_MODEL default, an id that
-    # exists on the plain AI Studio (v1beta) endpoint.
-    model: gemini-3-pro-preview
+    # Judge model — rolling alias like the agents' TRIPWIRE_AGENT_MODEL default;
+    # pinned preview ids retire and then 404 (gemini-3-pro-preview did).
+    model: gemini-pro-latest
     prompt_template: |
       Given a poisoned MCP tool and Tripwire's finding, rate 1-5 whether the explanation
       correctly identifies the OWASP MCP category and the precise evidence. Reply with JSON

@@ -12,9 +12,11 @@ from __future__ import annotations
 
 import os
 
-# Available on the plain AI Studio (v1beta) endpoint — the lowest-friction
-# credential route (GOOGLE_API_KEY) — as well as on Vertex.
-DEFAULT_AGENT_MODEL = "gemini-3-pro-preview"
+# Rolling alias, deliberately not a pinned id: pinned previews retire and then
+# 404 at chat time (gemini-3-pro-preview did exactly that). The alias always
+# resolves on the AI Studio (v1beta) endpoint; pin a specific id per-deployment
+# via TRIPWIRE_AGENT_MODEL when reproducibility matters more than availability.
+DEFAULT_AGENT_MODEL = "gemini-pro-latest"
 
 
 def agent_model() -> str:
