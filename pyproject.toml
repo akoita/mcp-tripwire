@@ -29,7 +29,9 @@ agent = [
 # `jsonschema` is for SARIF-output schema validation in tests/integration/
 # (per RFC-0003). Lighter alternative to `sarif-tools` which pulled matplotlib
 # + 17 other packages; we only need shape validation, not chart rendering.
-dev = ["ruff>=0.6.0", "pytest>=8.0.0", "jsonschema>=4.0.0"]
+# `pytest-cov` measures line coverage (issue #66); dev-only, so the core stays
+# dependency-free (Hard Rule #2). Coverage config lives in [tool.coverage.*] below.
+dev = ["ruff>=0.6.0", "pytest>=8.0.0", "jsonschema>=4.0.0", "pytest-cov>=5.0.0"]
 # Optional Ed25519 signing backend (RFC-0002 / #31). cryptography is the standard
 # Python crypto library and pulls only one transitive (`cffi`). Loaded lazily — a
 # base install without this extra still `import tripwire` cleanly.
@@ -57,5 +59,18 @@ ignore = ["S101"]  # asserts are fine in tests
 
 [tool.pytest.ini_options]
 testpaths = ["tests/unit", "tests/integration"]
-addopts = "-q"
+addopts = "-q"                                     # coverage is NOT in addopts — kept off make check's fast path; opt in via `make coverage` / CI.
 pythonpath = ["src", "."]  # `.` so `from app.fast_api_app import app` works without PYTHONPATH override (Codex round 2 caveat).
+
+# Coverage config (issue #66). `make coverage` and the CI `test-extras` leg pass
+# `--cov` explicitly; this centralises source + exclusions so both agree.
+# Advisory baseline: ~87% on the full extras suite. No `fail_under` gate yet —
+# add one once the coverage-improving issues (#61/#62) land, to avoid blocking
+# routine work on a floor set above real gaps (proxy.py error paths, app/ deploy).
+[tool.coverage.run]
+source = ["src/tripwire", "app"]
+branch = false
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError"]

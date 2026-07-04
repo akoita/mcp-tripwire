@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ast
 import re
+import subprocess  # noqa: S404 — only used for a fixed, trusted `git check-ignore` (see _git_ignored_names)
 import sys
 from pathlib import Path
 
@@ -121,6 +122,32 @@ ROOT_FILE_ALLOWLIST: dict[str, str] = {
 }
 
 
+def _git_ignored_names(names: list[str]) -> set[str]:
+    """Return the subset of root-level *names* that git ignores.
+
+    Root-clean polices *tracked* tidiness, so a .gitignore'd scratch file at
+    the root (e.g. `.coverage` / `coverage.xml` left by `make coverage`) must
+    not trip it. `git check-ignore` is the authoritative matcher — parsing
+    .gitignore ourselves would mishandle negations and patterns. Degrades to
+    "nothing ignored" if git is unavailable, preserving the stricter behaviour.
+    """
+    if not names:
+        return set()
+    try:
+        proc = subprocess.run(  # noqa: S603 — fixed argv, no shell, no untrusted input
+            ["git", "-C", str(ROOT), "check-ignore", "--stdin"],  # noqa: S607 — git resolved via PATH by design
+            input="\n".join(names),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return set()  # no git binary → fall back to policing everything
+    if proc.returncode > 1:
+        return set()  # 0 = some ignored, 1 = none ignored, >1 = error
+    return {line.strip() for line in proc.stdout.splitlines() if line.strip()}
+
+
 def check_root_clean() -> None:
     """Refuse new files at the repo root unless they're on the allowlist.
 
@@ -128,14 +155,19 @@ def check_root_clean() -> None:
     working-memory docs into the same visual space as load-bearing
     conventions. The allowlist documents the "why is this at the root"
     answer for every survivor — a deliberate signal to future contributors.
+
+    Git-ignored files are exempt: they aren't tracked repo content, so a local
+    build/coverage artifact at the root is not clutter the guardrail should police.
     """
-    for entry in ROOT.iterdir():
-        if not entry.is_file():
-            continue  # directories are unconstrained
-        if entry.name in ROOT_FILE_ALLOWLIST:
-            continue
+    candidates = [
+        e.name for e in ROOT.iterdir() if e.is_file() and e.name not in ROOT_FILE_ALLOWLIST
+    ]
+    ignored = _git_ignored_names(candidates)
+    for name in candidates:
+        if name in ignored:
+            continue  # .gitignore'd → not tracked clutter
         fail(
-            f"[root-clean] '{entry.name}' is not on the root allowlist. "
+            f"[root-clean] '{name}' is not on the root allowlist. "
             f"Move it into docs/ (or scripts/, examples/, etc.) — or, if it "
             f"genuinely belongs at the root, add it to ROOT_FILE_ALLOWLIST "
             f"in scripts/harness_guardrails.py with a one-line justification."

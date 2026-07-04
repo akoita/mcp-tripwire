@@ -54,6 +54,9 @@ test:  ## Run deterministic unit + integration tests
 test-agent:  ## Run optional HTTP/ADK tests with the agent extra installed
 	@if command -v uv >/dev/null 2>&1; then PYTHONPATH=src:. uv run --extra dev --extra agent pytest tests/unit/test_agents.py tests/integration/test_http_endpoints.py tests/integration/test_demo_adk_script.py; else PYTHONPATH=src:. $(RUN_PYTHON) -m pytest tests/unit/test_agents.py tests/integration/test_http_endpoints.py tests/integration/test_demo_adk_script.py || PYTHONPATH=src:. $(PYTHON) -m pytest tests/unit/test_agents.py tests/integration/test_http_endpoints.py tests/integration/test_demo_adk_script.py; fi
 
+coverage:  ## Line coverage on the full suite with all extras (matches the CI test-extras leg)
+	@if command -v uv >/dev/null 2>&1; then uv run --extra dev --extra agent --extra signing pytest --cov=src/tripwire --cov=app --cov-report=term-missing; else echo "coverage requires uv (installs [dev]+[agent]+[signing])"; fi
+
 guardrails:  ## Deterministic enforcement of AGENTS.md hard rules
 	@if command -v uv >/dev/null 2>&1; then uv run python scripts/harness_guardrails.py; else $(RUN_PYTHON) scripts/harness_guardrails.py || $(PYTHON) scripts/harness_guardrails.py; fi
 
