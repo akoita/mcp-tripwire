@@ -126,18 +126,15 @@ def test_ci_inputs_carry_tripwire_case_props_on_results():
 
 
 def test_from_corpus_rows_includes_drift_case_with_synthetic_finding():
-    """End-to-end: run the real corpus, build SarifInputs, the d1 drift case
-    must produce a result with ruleId == 'DRIFT-RUGPULL'."""
+    """End-to-end: scanner-clean drift cases get synthetic SARIF findings."""
     rows = run_corpus(load_corpus()).rows
     inputs = from_corpus_rows(rows)
     doc = to_sarif(inputs)
     rule_ids = {r["id"] for r in doc["runs"][0]["tool"]["driver"]["rules"]}
-    assert "DRIFT-RUGPULL" in rule_ids, (
-        f"d1 drift case didn't produce a synthetic DRIFT-RUGPULL rule. Rule IDs: {rule_ids}"
-    )
+    assert "DRIFT-RUGPULL" in rule_ids, f"synthetic drift rule missing. Rule IDs: {rule_ids}"
     drift_results = [r for r in doc["runs"][0]["results"] if r["ruleId"] == "DRIFT-RUGPULL"]
-    assert len(drift_results) == 1
-    assert drift_results[0]["properties"]["tripwire_case"]["id"] == "d1"
+    drift_case_ids = {r["properties"]["tripwire_case"]["id"] for r in drift_results}
+    assert drift_case_ids == {"d1", "d3", "d5"}
 
 
 # --- schema validation (skipif on jsonschema absence) ----------------------

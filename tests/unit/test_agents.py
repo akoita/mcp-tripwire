@@ -104,7 +104,7 @@ def test_agent_model_defaults_and_env_override(monkeypatch: pytest.MonkeyPatch):
 def test_seed_probes_returns_shipped_corpus_attacks():
     result = seed_probes()
     assert result["source"].endswith("attacks.jsonl")
-    assert result["count"] >= 8  # the original 8 attacks
+    assert result["count"] >= 40  # current shipped attack corpus
     assert result["count"] == len(result["probes"])
     for probe in result["probes"]:
         # Each probe carries enough to feed into the engine again.

@@ -265,7 +265,7 @@ docker logs -f mcp-tripwire
 
 A judge / external verifier can:
 - POST `/scan` with a tool descriptor and see findings.
-- GET `/eval` for the live 9/9 number.
+- GET `/eval` for the live 40/40 number.
 - Verify any badge minted by this instance using only its public key (post-Ed25519 #31).
 - Watch the SSE proxy quarantine a rug-pulled tool in real time (the demo shows this).
 

@@ -9,7 +9,7 @@ A conversational front-end for the trust loop. Where the CLI is for scripts and 
 Three specialists wrap the same deterministic engine as ADK `FunctionTool`s:
 
 - **Scanner** — runs `scan_tool_descriptor` on a pasted tool, explains the findings in natural language with the OWASP category and rule that fired.
-- **Red-team** — `seed_probes()` returns the 9 canonical attacks from the corpus; `propose_probe("rug-pull")` returns a category-filtered pick.
+- **Red-team** — `seed_probes()` returns the 40 canonical attacks from the corpus; `propose_probe("rug-pull")` returns a category-filtered pick.
 - **Attestor** — wraps `engine.approve` in `FunctionTool(require_confirmation=True)` so badge minting requires explicit human OK at runtime. The LLM cannot sign a badge on its own, even if it tried.
 
 A coordinator agent routes operator requests to the right specialist. **The LLM never decides allow/block** — it explains; the engine decides.

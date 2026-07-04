@@ -11,7 +11,7 @@ in-person version. Everything is deterministic and uses a clearly-labelled
 
 ```bash
 make demo      # the A/B + rug-pull + badge-tamper sequence
-make eval      # tripwire ci → "9/9 attacks blocked · 0 false positives"
+make eval      # tripwire ci → "40/40 attacks blocked · 0 false-positive(s) on 12 clean tool(s)"
 make check     # lint + test + guardrails all green (run beforehand)
 ```
 

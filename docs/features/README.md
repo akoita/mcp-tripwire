@@ -57,7 +57,7 @@ Where the trust loop is reachable from. Same engine, different transport.
 
 | Feature | Status | Audience | Where to use / test | Notes |
 |---|---|---|---|---|
-| [Attack corpus + drift runner](attack-corpus-runner.md) | ✅ implemented | Operator · CI · LLM agent | `corpus/attacks.jsonl` · `src/tripwire/corpus.py` · `make eval` · `tripwire ci --json` · `tests/unit/test_corpus.py` | Real measured headline: **9/9 attacks blocked · 0 false-positive on 4 clean tools**. Rule #6 (never invent metrics) is enforced here. |
+| [Attack corpus + drift runner](attack-corpus-runner.md) | ✅ implemented | Operator · CI · LLM agent | `corpus/attacks.jsonl` · `src/tripwire/corpus.py` · `make eval` · `tripwire ci --json` · `tests/unit/test_corpus.py` | Real measured headline: **40/40 attacks blocked · 0 false-positive(s) on 12 clean tool(s)**. Rule #6 (never invent metrics) is enforced here. |
 
 ## v0.2 — Credibility & integration
 

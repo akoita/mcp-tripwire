@@ -65,7 +65,7 @@ Through the proxy, a quarantined `tools/call` becomes a JSON-RPC error (see [std
 | Python | `engine.evaluate_call(mutated_tool).action is Action.QUARANTINE` |
 | Stdio proxy | Re-list strips the drifted tool; `tools/call` returns JSON-RPC error −32001 with `data.tripwire.action == "quarantine"` |
 | HTTP gateway | `/scan` against the mutated descriptor still flags it as findings (if mutation introduces a poisoning marker); drift-vs-approved comparison requires the engine state, which the HTTP `/scan` endpoint doesn't carry across calls — drift is a stateful concern best handled by the proxy bridge |
-| Corpus | Case `d1` (`rug-pull-exfil`) exercises the full path: approve clean → mutate → evaluate_call → expected QUARANTINE; counted in `make eval`'s **9/9** number |
+| Corpus | Cases `d1`–`d6` exercise the full path: approve clean → mutate → evaluate_call → expected QUARANTINE; counted in `make eval`'s **40/40** number |
 | Demo | `make demo` Section 3 and `make demo-proxy` Section C both show the drift catch end-to-end |
 
 ## Verification
@@ -74,7 +74,7 @@ Through the proxy, a quarantined `tools/call` becomes a JSON-RPC error (see [std
 - Unit (corpus): [`tests/unit/test_corpus.py::test_drift_attack_quarantine_counts_as_blocked`](../../tests/unit/test_corpus.py) + the negative case `test_drift_no_actual_drift_is_allowed` (identical re-list ≠ drift, prevents false-positives on re-approval).
 - Integration (proxy): [`tests/integration/test_proxy_bridge.py`](../../tests/integration/test_proxy_bridge.py) — section 3/4 of the test sequence triggers `_admin/mutate` on the fake MCP server, re-lists, then calls and asserts the JSON-RPC error.
 - Integration (demo script): [`tests/integration/test_proxy_demo_script.py`](../../tests/integration/test_proxy_demo_script.py).
-- Eval: `make eval` → `d1 (rug-pull-exfil): expected block, got quarantine ✓`.
+- Eval: `make eval` → `d1`–`d6`: expected block, got quarantine ✓.
 
 ## Guarantees and limitations
 
