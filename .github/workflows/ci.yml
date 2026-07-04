@@ -49,14 +49,17 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
       - name: Install (all extras — [dev] + [agent] + [signing])
         run: uv sync --extra dev --extra agent --extra signing
-      - name: Full test suite — must run with zero skips
+      - name: Full test suite — zero skips + coverage
         shell: bash
         run: |
           set -euo pipefail
           # A real test failure fails here via `set -e`. On success we parse
           # the machine-readable JUnit report (stdout is unreliable — the
           # project's addopts="-q" suppresses the summary footer under a pipe).
-          uv run pytest --junitxml=pytest-extras.xml
+          # Coverage (issue #66) is measured on THIS leg because the extras
+          # exercise the most code (proxy / signing / sse / http / adk).
+          uv run pytest --junitxml=pytest-extras.xml \
+            --cov=src/tripwire --cov=app --cov-report=term-missing --cov-report=xml
           uv run python - <<'PY'
           import sys, xml.etree.ElementTree as ET
           root = ET.parse("pytest-extras.xml").getroot()
@@ -69,3 +72,19 @@ jobs:
                     "optional extra is missing from CI (see issue #60).")
               sys.exit(1)
           PY
+      - name: Publish coverage to job summary
+        if: ${{ always() && hashFiles('.coverage') != '' }}
+        shell: bash
+        run: |
+          {
+            echo "## Coverage — all-extras leg (Python ${{ matrix.python-version }})"
+            echo
+            uv run coverage report --format=markdown
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload coverage report (advisory — no gate yet)
+        if: ${{ always() && hashFiles('coverage.xml') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.python-version }}
+          path: coverage.xml
+          if-no-files-found: ignore
