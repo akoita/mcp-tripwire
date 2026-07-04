@@ -128,6 +128,7 @@ _RULES: list[tuple[str, re.Pattern, str, Severity, str]] = [
 # Explicit escapes (not literal glyphs) so the rule is readable and robust:
 # U+200B ZWSP, U+200C ZWNJ, U+200D ZWJ, U+2060 WORD JOINER, U+FEFF BOM.
 _INVISIBLE_CODEPOINTS = frozenset({0x200B, 0x200C, 0x200D, 0x2060, 0xFEFF})
+_HOMOGLYPH_SCRIPTS = frozenset({"LATIN", "CYRILLIC", "GREEK"})
 
 
 def _has_invisible(text: str) -> bool:
@@ -179,15 +180,18 @@ def scan_tool(tool: dict) -> list[Finding]:
                     name,
                 )
             )
-        # Homoglyph smell: mixed scripts in a tool name (shadowing).
-        if where == "name" and _has_mixed_scripts(text):
+        # Names are identifiers, so separators should not let shadowing hide.
+        identifier_like = where == "name"
+        if where in {"name", "description"} and _has_intraword_mixed_scripts(
+            text, identifier_like=identifier_like
+        ):
             findings.append(
                 Finding(
                     SHADOW_HOMOGLYPH,
-                    "Mixed-script (homoglyph) tool name",
+                    "Mixed-script (homoglyph) shadowing in tool metadata",
                     Severity.MEDIUM,
                     "MCP03:2025",
-                    f"name: {text!r}",
+                    f"{where}: {text!r}",
                     name,
                 )
             )
@@ -211,13 +215,43 @@ def _snippet(text: str, at: int, width: int = 32) -> str:
     return text[start : start + width].replace("\n", " ")
 
 
-def _has_mixed_scripts(text: str) -> bool:
-    scripts = set()
+def _has_intraword_mixed_scripts(text: str, *, identifier_like: bool = False) -> bool:
+    tokens = [_letters_only(text)] if identifier_like else _alpha_tokens(text)
+    return any(_token_has_mixed_scripts(token) for token in tokens)
+
+
+def _alpha_tokens(text: str) -> list[str]:
+    tokens = []
+    token = []
     for ch in text:
         if ch.isalpha():
-            try:
-                name = unicodedata.name(ch)
-            except ValueError:
-                continue
-            scripts.add(name.split(" ")[0])  # e.g. LATIN, CYRILLIC, GREEK
-    return len({s for s in scripts if s in {"LATIN", "CYRILLIC", "GREEK"}}) > 1
+            token.append(ch)
+        elif token:
+            tokens.append("".join(token))
+            token = []
+    if token:
+        tokens.append("".join(token))
+    return tokens
+
+
+def _letters_only(text: str) -> str:
+    return "".join(ch for ch in text if ch.isalpha())
+
+
+def _token_has_mixed_scripts(text: str) -> bool:
+    scripts = set()
+    for ch in text:
+        script = _script(ch)
+        if script is not None:
+            scripts.add(script)
+    return len(scripts) > 1
+
+
+def _script(ch: str) -> str | None:
+    try:
+        script = unicodedata.name(ch).split(" ", maxsplit=1)[0]
+    except ValueError:
+        return None
+    if script in _HOMOGLYPH_SCRIPTS:
+        return script
+    return None
