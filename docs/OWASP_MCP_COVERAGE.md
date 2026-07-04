@@ -58,7 +58,7 @@ security suite — the out-of-scope rows are deliberate (see the non-goals in
 | `INJ-SYSPROMPT` | references to the system/developer prompt | MCP06:2025 |
 | `INJ-HIDE` | "do not tell the user" concealment phrasing | MCP06:2025 |
 | `INJ-INVISIBLE` | zero-width / invisible characters smuggled into metadata | MCP03:2025 |
-| `SHADOW-HOMOGLYPH` | mixed-script (homoglyph) tool name shadowing a legit tool | MCP03:2025 |
+| `SHADOW-HOMOGLYPH` | mixed-script (homoglyph) shadowing in a tool name or description | MCP03:2025 |
 | `EXF-SECRET` | instructions to exfiltrate secrets / tokens / credentials | MCP01:2025 |
 | `EXF-SSHENV` | references to credential material (ssh / env / private key) | MCP01:2025 |
 | `EXF-URL` | outbound network call embedded in tool metadata | MCP06:2025 |

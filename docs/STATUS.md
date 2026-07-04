@@ -11,7 +11,6 @@ _Working memory. Update at the end of each session._
 - Demo — A/B canary proof + rug-pull quarantine + tamper-evident badge.
 
 ## Next (hardening — see [ROADMAP.md](ROADMAP.md))
-- Extend homoglyph detection to descriptions, not just names (#65).
 - Grow the attack corpus to 50+ data-driven cases (#64).
 - Wire the LLM-judge `explanation_quality` eval metric (#63).
 - Lift `app/` coverage (deploy glue at ~68-70%) so the `fail_under` floor can be raised.
@@ -22,6 +21,7 @@ _Working memory. Update at the end of each session._
 - The `fail_under` floor is 85 against a ~88% total — the headroom is `app/` deploy glue (`fast_api_app.py` 68%, `sse_adapter.py` 70%) plus `proxy.serve()` wiring. Raise the floor as those close.
 
 ## Resolved
+- Homoglyph detection on descriptions — landed per #65: SHADOW-HOMOGLYPH now scans descriptions via an intra-word (per-token) mixed-script heuristic, so an embedded `gеt`-style shadow fires while legitimate multilingual descriptions (each word single-script) stay clean. New unit tests + multilingual clean case + corpus `a9`; `make eval` holds 10/10 blocked · 0 FP. Implemented via Codex CLI under review.
 - Coverage `fail_under` gate — landed per #87: `[tool.coverage.report] fail_under = 85` enforced on the CI `test-extras` leg and `make coverage` (a backslide fails the run); `make check`'s no-`--cov` fast path is unaffected. Regression floor, not a target — ~3pts below the ~88% total.
 - Per-rule detection matrix — landed per #61: one triggering + one clean input for all 8 rule ids, plus a completeness assertion against a new `detection.RULE_IDS` registry so a rule can't be added or removed without a matrix entry. Non-behavioural refactor: named the two structural rule ids and enumerated the registry.
 - Proxy error-path unit tests — landed per #62: in-memory (no-subprocess) tests for malformed frames, uncached/unnamed `tools/call`, upstream-closed / broken-pipe teardown, id-dispatch edges, cache invalidation, and `guard_*` edge cases. `proxy.py` 80% → 92%.

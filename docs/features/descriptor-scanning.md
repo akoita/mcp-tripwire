@@ -4,7 +4,7 @@
 
 ## Value (what this gives the agent / LLM)
 
-Before an agent calls a tool advertised by an MCP server, Tripwire tells it whether the tool's **descriptor itself is hostile** — independent of what the tool actually does at runtime. A poisoned description (instruction-override, hidden-from-user, exfil instructions, invisible Unicode payloads, homoglyph name) is detected and tagged with an OWASP MCP Top-10 category, so the agent (or the operator / CI gating the agent) can refuse to call it.
+Before an agent calls a tool advertised by an MCP server, Tripwire tells it whether the tool's **descriptor itself is hostile** — independent of what the tool actually does at runtime. A poisoned description (instruction-override, hidden-from-user, exfil instructions, invisible Unicode payloads, homoglyph shadowing) is detected and tagged with an OWASP MCP Top-10 category, so the agent (or the operator / CI gating the agent) can refuse to call it.
 
 Without this, the agent treats `tools/list` as ground truth — which is exactly how tool-poisoning attacks succeed in the wild.
 
@@ -20,7 +20,7 @@ Without this, the agent treats `tools/list` as ground truth — which is exactly
 
 - **Instruction-override phrases** (`MCP06:2025`) — `"ignore previous instructions"`-class hijacks in name/description.
 - **Invisible / zero-width characters** (`MCP03:2025`) — Unicode payloads that hide instructions from a casual reader.
-- **Mixed-script homoglyph names** (`MCP03:2025`) — `"gеt_weather"` with a Cyrillic `е` shadowing a legitimate tool.
+- **Mixed-script homoglyph shadowing** (`MCP03:2025`) — `"gеt_weather"` with a Cyrillic `е` shadowing a legitimate tool name, plus description tokens that mix Latin/Cyrillic/Greek inside a single word. Multilingual descriptions remain clean when each word stays in one script.
 - **Exfil instructions** (`MCP01:2025`) — descriptors that tell the agent to send secrets / credentials / env vars out-of-band.
 - **Outbound URLs in metadata** (`MCP06:2025`) — embedded `https://attacker.example/collect`-style targets.
 - **"Don't tell the user"** patterns (`MCP06:2025`) — instructions to hide actions from the operator.
@@ -63,7 +63,7 @@ The `scan_tool_descriptor()` ADK tool returns a richer dict (`{"status", "findin
 - CLI: [`tests/unit/test_cli.py`](../../tests/unit/test_cli.py) — exit codes and OWASP-grouped output.
 - HTTP: [`tests/integration/test_http_endpoints.py`](../../tests/integration/test_http_endpoints.py) — happy path + malformed body.
 - ADK: [`tests/unit/test_agents.py`](../../tests/unit/test_agents.py) — tool function return shape; factory construction.
-- Corpus: 8 of the 9 corpus attacks in [`corpus/attacks.jsonl`](../../corpus/attacks.jsonl) exercise the scanner path; the 9th (`d1`) exercises drift-quarantine instead — see [drift-quarantine.md](drift-quarantine.md).
+- Corpus: 9 of the 10 corpus attacks in [`corpus/attacks.jsonl`](../../corpus/attacks.jsonl) exercise the scanner path; the 10th (`d1`) exercises drift-quarantine instead — see [drift-quarantine.md](drift-quarantine.md).
 
 ## Guarantees and limitations
 
