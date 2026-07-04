@@ -1,11 +1,17 @@
 # RFC-0005 — Zero-key agent reasoning via MCP sampling
 
-**Status:** **draft v2 (Codex review folded in 2026-07-04)**
+**Status:** **proposed — implementation deferred (2026-07-04)**
 **Author:** Aboubakar Koïta (with Claude)
 **Issue:** [#92](https://github.com/akoita/mcp-tripwire/issues/92)
 **Relates to:** [RFC-0001 stdio bridge](RFC-0001-e2-stdio-proxy-bridge.md), [RFC-0004 HTTP/SSE transport](RFC-0004-http-sse-proxy-transport.md), [`src/tripwire/proxy.py`](../../src/tripwire/proxy.py), [`src/tripwire/agents/_model.py`](../../src/tripwire/agents/_model.py), [`src/tripwire/agents/scanner_agent.py`](../../src/tripwire/agents/scanner_agent.py), [#63 LLM-judge metric](https://github.com/akoita/mcp-tripwire/issues/63)
 **Targets:** v0.3 (scale & integration). Not a v0.2 item — the deterministic core and the configured-key agent path already ship.
 **Spec baseline:** MCP **2025-11-25** ([sampling](https://modelcontextprotocol.io/specification/2025-11-25/client/sampling)). All capability names below MUST be re-confirmed against that pinned version at implementation time.
+
+## Disposition (2026-07-04)
+
+**Deferred — kept as an accepted design record, not scheduled for implementation.** The clean "zero-key, full agents" outcome requires the client to advertise **`sampling.tools`** (see [Capability matrix](#capability-matrix-v2)); across mainstream MCP clients that is not yet common, and basic `sampling` only unlocks a reduced no-tool reasoning path. Weighed against the real proxy complexity (client-response interception, id ownership, a serialized writer, pending-future lifecycle), the partial win isn't worth building today.
+
+**Revisit trigger:** the MCP clients operators actually put Tripwire in front of start shipping `sampling.tools`. Until then, the `[agent]` layer keeps the configured-key path, and the deterministic core remains fully keyless. Tracking: [#92](https://github.com/akoita/mcp-tripwire/issues/92).
 
 ## Why this exists
 
