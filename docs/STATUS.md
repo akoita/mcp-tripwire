@@ -14,14 +14,15 @@ _Working memory. Update at the end of each session._
 - Extend homoglyph detection to descriptions, not just names (#65).
 - Grow the attack corpus to 50+ data-driven cases (#64).
 - Wire the LLM-judge `explanation_quality` eval metric (#63).
-- Add a `fail_under` coverage floor now that the detection matrix (#61) and proxy error paths (#62) closed the known gaps — remaining shortfall is `app/` deploy glue + `serve()` wiring.
+- Lift `app/` coverage (deploy glue at ~68-70%) so the `fail_under` floor can be raised.
 - Release automation: changelog + tag flow, stale-branch pruning (#67).
 
 ## Open
 - Cloud Run remains optional/staged; local Docker and local demos are the current operator proof.
-- Coverage is measured and published per-run (job summary + `coverage.xml` artifact) but not gated — no `fail_under` floor yet. Detection is now per-rule tested and `proxy.py` is 92%; the coverage-gate blocker is cleared, so a floor is the next small hardening step.
+- The `fail_under` floor is 85 against a ~88% total — the headroom is `app/` deploy glue (`fast_api_app.py` 68%, `sse_adapter.py` 70%) plus `proxy.serve()` wiring. Raise the floor as those close.
 
 ## Resolved
+- Coverage `fail_under` gate — landed per #87: `[tool.coverage.report] fail_under = 85` enforced on the CI `test-extras` leg and `make coverage` (a backslide fails the run); `make check`'s no-`--cov` fast path is unaffected. Regression floor, not a target — ~3pts below the ~88% total.
 - Per-rule detection matrix — landed per #61: one triggering + one clean input for all 8 rule ids, plus a completeness assertion against a new `detection.RULE_IDS` registry so a rule can't be added or removed without a matrix entry. Non-behavioural refactor: named the two structural rule ids and enumerated the registry.
 - Proxy error-path unit tests — landed per #62: in-memory (no-subprocess) tests for malformed frames, uncached/unnamed `tools/call`, upstream-closed / broken-pipe teardown, id-dispatch edges, cache invalidation, and `guard_*` edge cases. `proxy.py` 80% → 92%.
 - Coverage reporting in CI — landed per #66: the `test-extras` leg runs `pytest --cov`, publishes a coverage table to the job summary, and uploads `coverage.xml`. Local mirror: `make coverage`. Advisory baseline ~87%.

@@ -63,10 +63,9 @@ addopts = "-q"                                     # coverage is NOT in addopts 
 pythonpath = ["src", "."]  # `.` so `from app.fast_api_app import app` works without PYTHONPATH override (Codex round 2 caveat).
 
 # Coverage config (issue #66). `make coverage` and the CI `test-extras` leg pass
-# `--cov` explicitly; this centralises source + exclusions so both agree.
-# Advisory baseline: ~87% on the full extras suite. No `fail_under` gate yet —
-# add one once the coverage-improving issues (#61/#62) land, to avoid blocking
-# routine work on a floor set above real gaps (proxy.py error paths, app/ deploy).
+# `--cov` explicitly; this centralises source + exclusions so both agree. Since
+# #61/#62 closed the core gaps, the total sits ~88% (core `src/tripwire` 92-100%;
+# the drag is `app/` deploy glue at ~68-70%).
 [tool.coverage.run]
 source = ["src/tripwire", "app"]
 branch = false
@@ -74,3 +73,8 @@ branch = false
 [tool.coverage.report]
 show_missing = true
 exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError"]
+# Regression floor, not a target: set ~3pts below the ~88% total so a real
+# backslide (a module losing its tests) fails CI without flaking on small dips.
+# Raise it as `app/` coverage improves. Only enforced when --cov is active, so
+# `make check`'s fast path (plain pytest, no coverage) is unaffected.
+fail_under = 85
