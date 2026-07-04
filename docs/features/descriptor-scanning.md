@@ -58,7 +58,8 @@ The `scan_tool_descriptor()` ADK tool returns a richer dict (`{"status", "findin
 
 ## Verification
 
-- Unit: [`tests/unit/test_detection.py`](../../tests/unit/test_detection.py) — every rule has at least one positive case.
+- Unit: [`tests/unit/test_detection.py`](../../tests/unit/test_detection.py) — fingerprint stability, drift, and spot checks.
+- Per-rule matrix: [`tests/unit/test_detection_matrix.py`](../../tests/unit/test_detection_matrix.py) — one triggering + one clean input for **every** rule id, plus a completeness assertion against `detection.RULE_IDS` so a new rule can't ship without its own test (a single-rule regression can't hide behind the aggregate corpus).
 - CLI: [`tests/unit/test_cli.py`](../../tests/unit/test_cli.py) — exit codes and OWASP-grouped output.
 - HTTP: [`tests/integration/test_http_endpoints.py`](../../tests/integration/test_http_endpoints.py) — happy path + malformed body.
 - ADK: [`tests/unit/test_agents.py`](../../tests/unit/test_agents.py) — tool function return shape; factory construction.

@@ -134,6 +134,18 @@ def _has_invisible(text: str) -> bool:
     return any(ord(c) in _INVISIBLE_CODEPOINTS for c in text)
 
 
+# Rule ids for the two structural (non-regex) checks in scan_tool below, named
+# so scan_tool() and the registry share one source of truth.
+INJ_INVISIBLE = "INJ-INVISIBLE"
+SHADOW_HOMOGLYPH = "SHADOW-HOMOGLYPH"
+
+# Canonical registry of every rule id scan_tool() can emit: the regex rules
+# (from _RULES) plus the two structural checks. Single source of truth that the
+# per-rule matrix test (#61) asserts completeness against, so a new rule can't
+# ship without a dedicated test. New structural checks MUST add their id here.
+RULE_IDS: tuple[str, ...] = tuple(r[0] for r in _RULES) + (INJ_INVISIBLE, SHADOW_HOMOGLYPH)
+
+
 def _texts(tool: dict) -> list[tuple[str, str]]:
     """(location, text) pairs to scan."""
     out = [("name", str(tool.get("name", ""))), ("description", str(tool.get("description", "")))]
@@ -159,7 +171,7 @@ def scan_tool(tool: dict) -> list[Finding]:
         if _has_invisible(text):
             findings.append(
                 Finding(
-                    "INJ-INVISIBLE",
+                    INJ_INVISIBLE,
                     "Invisible/zero-width characters in metadata",
                     Severity.HIGH,
                     "MCP03:2025",
@@ -171,7 +183,7 @@ def scan_tool(tool: dict) -> list[Finding]:
         if where == "name" and _has_mixed_scripts(text):
             findings.append(
                 Finding(
-                    "SHADOW-HOMOGLYPH",
+                    SHADOW_HOMOGLYPH,
                     "Mixed-script (homoglyph) tool name",
                     Severity.MEDIUM,
                     "MCP03:2025",
