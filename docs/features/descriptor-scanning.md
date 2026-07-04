@@ -63,7 +63,7 @@ The `scan_tool_descriptor()` ADK tool returns a richer dict (`{"status", "findin
 - CLI: [`tests/unit/test_cli.py`](../../tests/unit/test_cli.py) — exit codes and OWASP-grouped output.
 - HTTP: [`tests/integration/test_http_endpoints.py`](../../tests/integration/test_http_endpoints.py) — happy path + malformed body.
 - ADK: [`tests/unit/test_agents.py`](../../tests/unit/test_agents.py) — tool function return shape; factory construction.
-- Corpus: 9 of the 10 corpus attacks in [`corpus/attacks.jsonl`](../../corpus/attacks.jsonl) exercise the scanner path; the 10th (`d1`) exercises drift-quarantine instead — see [drift-quarantine.md](drift-quarantine.md).
+- Corpus: 34 approval-time corpus attacks in [`corpus/attacks.jsonl`](../../corpus/attacks.jsonl) exercise scanner blocking directly; 6 drift cases exercise quarantine instead — see [drift-quarantine.md](drift-quarantine.md).
 
 ## Guarantees and limitations
 

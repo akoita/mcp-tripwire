@@ -154,7 +154,7 @@ def test_ci_json_mode_produces_machine_parseable_output():
     assert "attacks_total" in payload
     assert "false_positives" in payload
     assert "rows" in payload and isinstance(payload["rows"], list)
-    # The default corpus is the 8/8 attack set; preserve the headline number.
+    # The default corpus is the shipped attack set; preserve the headline contract.
     assert payload["attacks_total"] >= 1
     # rc is 0 only when no attack survived AND no false positives.
     assert (rc == 0) == (

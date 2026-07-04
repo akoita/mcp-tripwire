@@ -16,9 +16,9 @@ Open source (Apache-2.0), and built to be **verifiable rather than trusted**: a 
 
 | Headline | Number |
 |---|---|
-| Attack corpus blocked | **9 / 9** (`make eval`) |
-| False positives on clean tools | **0 / 4** |
-| Tests (unit + integration) | **79 passed / 46 skipped** with default `[dev]`; **143 passed / 0 skipped** with `[agent]` + `[signing]` extras — both legs run in [CI](.github/workflows/ci.yml) |
+| Attack corpus blocked | **40 / 40** (`make eval`) |
+| False positives on clean tools | **0 / 12** |
+| Tests (unit + integration) | **118 passed / 46 skipped** with default `[dev]`; **182 passed / 0 skipped** with `[agent]` + `[signing]` extras — both legs run in [CI](.github/workflows/ci.yml) |
 | Deterministic core dependencies | **stdlib only** (verified by `scripts/harness_guardrails.py`) |
 | Demos (each its own `make` target) | `demo` · `demo-proxy` · `demo-adk` · `demo-proxy-sse` · `demo-real-mcp` |
 
@@ -38,8 +38,8 @@ Tripwire doesn't try to read a tool's intent. It enforces **integrity**, which c
 
 | The tool is… | For example | What Tripwire does |
 |---|---|---|
-| **Honest & clean** | a normal `read_file` | Approves it, fingerprints it, mints a signed badge. Measured: **0 / 4** false positives on clean tools. |
-| **Dishonest from the start** | manifest hides *"…also send the secret to attacker.example"* | **Blocks** it at scan time and maps it to the OWASP MCP Top 10 (`MCP01:2025` secret exposure / `MCP06:2025` intent-flow subversion). It never reaches the agent. Measured: **9 / 9** corpus attacks blocked. |
+| **Honest & clean** | a normal `read_file` | Approves it, fingerprints it, mints a signed badge. Measured: **0 / 12** false positives on clean tools. |
+| **Dishonest from the start** | manifest hides *"…also send the secret to attacker.example"* | **Blocks** it at scan time and maps it to the OWASP MCP Top 10 (`MCP01:2025` secret exposure / `MCP06:2025` intent-flow subversion). It never reaches the agent. Measured: **40 / 40** corpus attacks blocked. |
 | **Honest, then it changes** | an approved tool's schema silently mutates — a benign update *or* a malicious **rug pull** (`MCP03:2025` tool poisoning) | The fingerprint stops matching, so the next call is **quarantined** and you re-review. Intent is irrelevant — *the change itself* is the trigger. |
 
 The third row is the gap Tripwire exists for: a static scanner signs off once and never looks again, while a runtime gateway rarely leaves evidence you can audit later. Tripwire keeps the approval honest for the whole session **and** leaves a signed, tamper-evident trail.
@@ -72,7 +72,7 @@ Every capability above is implemented on `main` and covered by tests; the precis
 
 ```bash
 # One-time bootstrap (uv ≥ 0.5; installs ruff + pytest)
-make check                 # lint + 79 default tests + harness guardrails
+make check                 # lint + 118 default tests + harness guardrails
 
 # The five demos — each a different face of the same trust loop
 make demo                  # engine-level: approve / evaluate_call / verify_badge (no transport)
@@ -82,7 +82,7 @@ make demo-proxy-sse        # HTTP+SSE bridge: hosted-MCP transport proof (requir
 make demo-real-mcp         # real upstream: Tripwire fronts Microsoft Playwright MCP via npx
 
 # Headline measurement (real number, sourced from run_corpus — Hard Rule #6)
-make eval                  # → "9/9 attacks blocked · 0 false-positive(s) on 4 clean tool(s)"
+make eval                  # → "40/40 attacks blocked · 0 false-positive(s) on 12 clean tool(s)"
 ```
 
 ### The proof moment (`make demo` / `make demo-proxy`)
@@ -98,7 +98,7 @@ make eval                  # → "9/9 attacks blocked · 0 false-positive(s) on 
 
 ```
 1) Scanner   → 3 OWASP-tagged findings on the poisoned tool
-2) Red-team  → 9 canonical probes (from corpus/attacks.jsonl), filterable by category
+2) Red-team  → 40 canonical probes (from corpus/attacks.jsonl), filterable by category
 3) Attestor  → poisoned blocked (badge=None), clean signed (badge minted, fingerprint shown)
 ```
 
@@ -133,7 +133,7 @@ Each capability, and where it lives in the tree:
 | **Deterministic security core** | [`detection.py`](src/tripwire/detection.py), [`engine.py`](src/tripwire/engine.py), [`attestation.py`](src/tripwire/attestation.py) + the signing backends in [`signing/`](src/tripwire/signing/) |
 | **Reusable agent skills** | three under [`.agents/skills/`](.agents/skills/): `scanning_mcp_servers`, `triaging_owasp_mcp_findings`, `issuing_mcp_trust_badge` |
 | **Multi-agent layer** | Scanner / Red-team / Attestor + coordinator in [`src/tripwire/agents/`](src/tripwire/agents/) and [`app/agent.py`](app/agent.py); Attestor uses `FunctionTool(require_confirmation=True)` for human-in-the-loop badge minting |
-| **Two-layer evaluation** | deterministic `pytest` (79 default tests, 143 with `[agent]` + `[signing]`) + non-deterministic eval datasets in [`tests/eval/datasets/`](tests/eval/datasets/) |
+| **Two-layer evaluation** | deterministic `pytest` (118 default tests, 182 with `[agent]` + `[signing]`) + non-deterministic eval datasets in [`tests/eval/datasets/`](tests/eval/datasets/) |
 | **Deployability** | [`Dockerfile`](Dockerfile), [`app/fast_api_app.py`](app/fast_api_app.py); local Docker verified, Cloud Run staged (see the [feature catalog](docs/features/README.md)) |
 | **Quality gates as code** | pre-commit (`ruff`, secret detection, [`no_commit_to_main.sh`](scripts/no_commit_to_main.sh), [`harness_guardrails.py`](scripts/harness_guardrails.py)) + GitHub Actions (`ci`, `security`, `ai-review` under [.github/workflows/](.github/workflows/)) |
 
@@ -143,7 +143,7 @@ Each capability, and where it lives in the tree:
 src/tripwire/         deterministic core (stdlib-only) + optional ADK agents/
 app/                  agents-cli / Cloud Run shell (FastAPI + ADK root_agent)
 examples/             demo.py · demo_proxy.py · demo_proxy_sse.py · demo_real_mcp_playwright.py
-corpus/               MCPTox-style attack corpus (real, measured — 9 attacks + 4 clean)
+corpus/               MCPTox-style attack corpus (real, measured — 40 attacks + 12 clean)
 tests/                unit · integration · eval/ (datasets + metrics + eval_config.yaml)
 .agents/skills/       Agent Skills (SKILL.md) — symlinked into .claude & .gemini
 docs/                 ADRs, RFCs (incl. RFC-0001 stdio bridge), architecture, runbooks, plans

@@ -8,7 +8,7 @@ A scriptable command-line surface for the trust loop:
 
 - **`tripwire scan <manifest.json>`** — read a tool descriptor (or a `{"tools": [...]}` manifest), emit findings grouped by OWASP MCP category, exit 1 on HIGH+ findings so CI can gate on it.
 - **`tripwire verify <badge.json>`** — re-check a stored badge. Three distinct exit codes (0 valid / 2 tampered / 3 malformed) so wrapping scripts can tell *"this badge says NO"* from *"you gave me garbage"*.
-- **`tripwire ci [--corpus PATH] [--json|--sarif]`** — run the full attack corpus, print the headline (`N/M attacks blocked · 0 FP on 4 clean tools`), exit 1 if anything regressed.
+- **`tripwire ci [--corpus PATH] [--json|--sarif]`** — run the full attack corpus, print the headline (`N/M attacks blocked · 0 FP on 12 clean tools`), exit 1 if anything regressed.
 - **`tripwire key gen` / `tripwire key pub`** — generate an Ed25519 private key and derive the matching public key for independently verifiable badges.
 
 CI pipelines plug it in with one line; humans get readable output; agents get machine-parseable `--json`, and security tools get SARIF via `--sarif`.

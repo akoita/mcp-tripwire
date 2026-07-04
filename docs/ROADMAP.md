@@ -19,7 +19,7 @@ Everything below is on `main`, implemented and covered by tests. The precise, fi
 | HTTP gateway | `/scan` `/verify` `/eval` `/healthz`; local Docker verified | `app/fast_api_app.py`, [`docs/runbooks/deploy.md`](runbooks/deploy.md) |
 | Harness | hard rules machine-enforced; pre-commit no-commit-to-main; feature-catalog + root-clean guardrails | [AGENTS.md](../AGENTS.md), `scripts/harness_guardrails.py` |
 
-Measured on `main`: **79 default tests pass / 46 optional-extra skips**, **143 pass / 0 skips with `[agent]` + `[signing]`** (both legs run in CI), **9/9 attacks blocked · 0 false positives on 4 clean tools** (`make eval`), deterministic core stdlib-only.
+Measured on `main`: **118 default tests pass / 46 optional-extra skips**, **182 pass / 0 skips with `[agent]` + `[signing]`** (both legs run in CI), **40/40 attacks blocked · 0 false-positive(s) on 12 clean tool(s)** (`make eval`), deterministic core stdlib-only.
 
 The **v0.2 — Credibility & integration** milestone (SARIF · Ed25519 · HTTP/SSE) is complete; design history is in the four accepted RFCs under [`docs/rfc/`](rfc/).
 

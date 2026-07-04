@@ -4,16 +4,16 @@
 
 ## Value (what this gives the agent / operator)
 
-A measurable, real pass/fail signal for "is Tripwire still catching what it claims to catch?" Every claim in the README, the writeup, and every cross-doc that says **"9/9 attacks blocked · 0 false positives on 4 clean tools"** traces back to a single command (`make eval`) running against [`corpus/attacks.jsonl`](../../corpus/attacks.jsonl).
+A measurable, real pass/fail signal for "is Tripwire still catching what it claims to catch?" Every claim in the README, the writeup, and every cross-doc that says **"40/40 attacks blocked · 0 false-positive(s) on 12 clean tool(s)"** traces back to a single command (`make eval`) running against [`corpus/attacks.jsonl`](../../corpus/attacks.jsonl).
 
 This is the load-bearing artefact for Hard Rule #6 (never invent metrics). Anyone — judge, contributor, future-me — can clone the repo, run one command, and confirm the headline number.
 
 The corpus covers two attack lifecycles:
 
-- **Approval-time** (8 cases, `a1`–`a8`) — poisoned descriptors that the scanner must catch before approval.
-- **Call-time drift** (1 case, `d1`) — a clean tool that mutates after approval; caught by `evaluate_call`, counted as blocked.
+- **Approval-time** (34 cases, `a1`–`a34`) — poisoned descriptors that the scanner must catch before approval.
+- **Call-time drift** (6 cases, `d1`–`d6`) — clean tools that mutate after approval; caught by `evaluate_call`, counted as blocked.
 
-Plus 4 clean tools (`c1`–`c4`) to prove **0 false positives**.
+Plus 12 clean tools (`c1`–`c12`) to prove **0 false positives**, including multilingual descriptors and benign near-misses.
 
 ## Audience
 
@@ -97,7 +97,7 @@ Per-case JSONL shape:
 
 ## Guarantees and limitations
 
-- **Real numbers, every time.** No hand-edited scoreboards anywhere in the repo — every quoted `9/9` traces to a `make eval` invocation.
+- **Real numbers, every time.** No hand-edited scoreboards anywhere in the repo — every quoted `40/40` traces to a `make eval` invocation.
 - **JSONL corpus is hand-curated.** Not (yet) auto-pulled from a public threat feed; expansion is operator-paced. Tracked as P2 in [docs/BACKLOG.md](../BACKLOG.md).
 - **One signing key per run** (`ci-only` placeholder for tests). Multi-key corpus runs are an operator concern.
 - **Drift case requires both an approval and a re-evaluation.** A pure "scan this descriptor" check can't catch drift on its own; drift is by definition stateful.

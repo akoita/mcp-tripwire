@@ -12,7 +12,7 @@ themed summary. P0 = do next · P1 = strongly targeted · P2 = design-for.
 - [ ] Refresh stale `TECH_DEBT.md` — shipped features still listed as stubs — [#59](https://github.com/akoita/mcp-tripwire/issues/59).
 
 ## P1 — depth & breadth
-- [ ] Grow the attack corpus to 50+ data-driven cases — [#64](https://github.com/akoita/mcp-tripwire/issues/64).
+- [x] Grow the attack corpus to 50+ data-driven cases — [#64](https://github.com/akoita/mcp-tripwire/issues/64).
 - [ ] Extend homoglyph / mixed-script detection from names to descriptions — [#65](https://github.com/akoita/mcp-tripwire/issues/65).
 - [ ] Wire the LLM-judge `explanation_quality` eval metric into the harness — [#63](https://github.com/akoita/mcp-tripwire/issues/63).
 - [ ] Release automation (changelog + tag flow) and stale-branch pruning — [#67](https://github.com/akoita/mcp-tripwire/issues/67).

@@ -8,7 +8,7 @@ The HTTP gateway is the trust loop **without** the SDK install. Anything that sp
 
 - **POST `/scan`** with a tool descriptor → get back findings grouped by OWASP MCP category.
 - **POST `/verify`** with a stored badge → get back `{valid, status, reason, tool}` (status mirrors the CLI's three exit codes).
-- **GET `/eval`** → run the full attack corpus, get back the live `9/9 attacks blocked` number.
+- **GET `/eval`** → run the full attack corpus, get back the live `40/40 attacks blocked` number.
 - **GET `/healthz`** → liveness probe for Cloud Run / k8s.
 - **Mount `/mcp/sse/*`** in front of an SSE-transport MCP server when `TRIPWIRE_UPSTREAM_SSE_URL` is configured.
 
