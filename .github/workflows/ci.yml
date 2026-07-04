@@ -57,7 +57,9 @@ jobs:
           # the machine-readable JUnit report (stdout is unreliable — the
           # project's addopts="-q" suppresses the summary footer under a pipe).
           # Coverage (issue #66) is measured on THIS leg because the extras
-          # exercise the most code (proxy / signing / sse / http / adk).
+          # exercise the most code (proxy / signing / sse / http / adk). The
+          # `fail_under` floor in [tool.coverage.report] gates it: pytest exits
+          # non-zero (failing this step via `set -e`) if total coverage backslides.
           uv run pytest --junitxml=pytest-extras.xml \
             --cov=src/tripwire --cov=app --cov-report=term-missing --cov-report=xml
           uv run python - <<'PY'
@@ -81,7 +83,7 @@ jobs:
             echo
             uv run coverage report --format=markdown
           } >> "$GITHUB_STEP_SUMMARY"
-      - name: Upload coverage report (advisory — no gate yet)
+      - name: Upload coverage report (gated at fail_under; see pyproject)
         if: ${{ always() && hashFiles('coverage.xml') != '' }}
         uses: actions/upload-artifact@v4
         with:
