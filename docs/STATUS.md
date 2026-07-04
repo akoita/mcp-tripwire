@@ -11,16 +11,18 @@ _Working memory. Update at the end of each session._
 - Demo — A/B canary proof + rug-pull quarantine + tamper-evident badge.
 
 ## Next (hardening — see [ROADMAP.md](ROADMAP.md))
-- Deepen detection tests: per-rule matrix (#61), homoglyph on descriptions (#65).
+- Extend homoglyph detection to descriptions, not just names (#65).
 - Grow the attack corpus to 50+ data-driven cases (#64).
 - Wire the LLM-judge `explanation_quality` eval metric (#63).
+- Add a `fail_under` coverage floor now that the detection matrix (#61) and proxy error paths (#62) closed the known gaps — remaining shortfall is `app/` deploy glue + `serve()` wiring.
 - Release automation: changelog + tag flow, stale-branch pruning (#67).
 
 ## Open
 - Cloud Run remains optional/staged; local Docker and local demos are the current operator proof.
-- Coverage is measured and published per-run (job summary + `coverage.xml` artifact) but not gated — no `fail_under` floor yet. `proxy.py` is now 92% (only `serve()`'s real-stdio wiring uncovered); the remaining gap is `app/` deploy glue. Add a floor once #61 lands.
+- Coverage is measured and published per-run (job summary + `coverage.xml` artifact) but not gated — no `fail_under` floor yet. Detection is now per-rule tested and `proxy.py` is 92%; the coverage-gate blocker is cleared, so a floor is the next small hardening step.
 
 ## Resolved
+- Per-rule detection matrix — landed per #61: one triggering + one clean input for all 8 rule ids, plus a completeness assertion against a new `detection.RULE_IDS` registry so a rule can't be added or removed without a matrix entry. Non-behavioural refactor: named the two structural rule ids and enumerated the registry.
 - Proxy error-path unit tests — landed per #62: in-memory (no-subprocess) tests for malformed frames, uncached/unnamed `tools/call`, upstream-closed / broken-pipe teardown, id-dispatch edges, cache invalidation, and `guard_*` edge cases. `proxy.py` 80% → 92%.
 - Coverage reporting in CI — landed per #66: the `test-extras` leg runs `pytest --cov`, publishes a coverage table to the job summary, and uploads `coverage.xml`. Local mirror: `make coverage`. Advisory baseline ~87%.
 - Full extras-gated suite in CI — landed per #60: the `test-extras` leg installs `[dev]+[agent]+[signing]` and fails if any test skips, so Ed25519 / SSE / HTTP-gateway / ADK tests actually execute in CI.
