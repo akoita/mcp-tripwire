@@ -11,16 +11,17 @@ _Working memory. Update at the end of each session._
 - Demo — A/B canary proof + rug-pull quarantine + tamper-evident badge.
 
 ## Next (hardening — see [ROADMAP.md](ROADMAP.md))
-- Deepen detection tests: per-rule matrix (#61), proxy error paths (#62), homoglyph on descriptions (#65).
+- Deepen detection tests: per-rule matrix (#61), homoglyph on descriptions (#65).
 - Grow the attack corpus to 50+ data-driven cases (#64).
 - Wire the LLM-judge `explanation_quality` eval metric (#63).
 - Release automation: changelog + tag flow, stale-branch pruning (#67).
 
 ## Open
 - Cloud Run remains optional/staged; local Docker and local demos are the current operator proof.
-- Coverage is measured and published per-run (job summary + `coverage.xml` artifact) but not gated — no `fail_under` floor yet. Add one once the coverage-improving issues (#61/#62) close the known gaps (proxy error paths, `app/` deploy glue).
+- Coverage is measured and published per-run (job summary + `coverage.xml` artifact) but not gated — no `fail_under` floor yet. `proxy.py` is now 92% (only `serve()`'s real-stdio wiring uncovered); the remaining gap is `app/` deploy glue. Add a floor once #61 lands.
 
 ## Resolved
+- Proxy error-path unit tests — landed per #62: in-memory (no-subprocess) tests for malformed frames, uncached/unnamed `tools/call`, upstream-closed / broken-pipe teardown, id-dispatch edges, cache invalidation, and `guard_*` edge cases. `proxy.py` 80% → 92%.
 - Coverage reporting in CI — landed per #66: the `test-extras` leg runs `pytest --cov`, publishes a coverage table to the job summary, and uploads `coverage.xml`. Local mirror: `make coverage`. Advisory baseline ~87%.
 - Full extras-gated suite in CI — landed per #60: the `test-extras` leg installs `[dev]+[agent]+[signing]` and fails if any test skips, so Ed25519 / SSE / HTTP-gateway / ADK tests actually execute in CI.
 - `TECH_DEBT.md` refresh — landed per #59: shipped features (proxy, ADK agents, Ed25519) moved to a "Resolved" log; only genuine debt (rule-based injection #63, name-only homoglyph #65) remains listed.
