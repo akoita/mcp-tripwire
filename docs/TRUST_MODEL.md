@@ -73,10 +73,11 @@ partially addresses, or deliberately leaves out — is in
 2. The first approval is a sound trust decision (trust-on-first-use).
 3. Detection heuristics cover the relevant attack classes; novel payloads may be
    false negatives (no novelty claim on scanning), and the coarse pattern rules
-   also over-fire on some benign real-world manifests (false positives, e.g. a
-   JSON-Schema `$schema` URL) — precision hardening tracked in
-   [#97](https://github.com/akoita/mcp-tripwire/issues/97). Scanning is
-   best-effort; the deterministic guarantees are integrity and provenance.
+   may also over-fire on novel benign real-world descriptors. Common JSON-Schema
+   `$schema` / `$id` URLs and ordinary "fetch" descriptions are now handled, with
+   the [Morpho manifest fixture](../corpus/samples/morpho-tools.json) kept as a
+   clean regression. Scanning is best-effort; the deterministic guarantees are
+   integrity and provenance.
 4. The gateway process is honest and not logging payloads.
 5. Tool manifests are intended to be stable between approvals.
 
