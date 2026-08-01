@@ -54,15 +54,28 @@ class Finding:
 
 # --- Schema fingerprinting -------------------------------------------------
 
-# Only the trust-relevant fields participate in the fingerprint. Cosmetic fields
-# (titles, examples) are excluded so benign edits don't trip false rug-pull alarms.
-_FINGERPRINT_FIELDS = ("name", "description", "inputSchema")
+#: Version of the canonical form, embedded in it so the scheme is self-describing
+#: and any future change to the serialisation is itself detectable.
+#:
+#: v1 (pre-#103) projected the descriptor onto an allowlist of
+#: ``(name, description, inputSchema)``. That failed **open**: a rug pull that
+#: mutated only ``annotations`` (readOnly → destructive), ``outputSchema``,
+#: ``title``, ``icons`` or ``_meta`` produced an identical hash and was never
+#: quarantined — and every field the MCP spec adds would have been another hole.
+#: v2 hashes the entire advertised descriptor, so unknown fields fail **closed**.
+FINGERPRINT_VERSION = 2
 
 
 def canonicalize(tool: dict) -> str:
-    """Deterministic JSON projection of the trust-relevant parts of a tool schema."""
-    projection = {k: tool.get(k) for k in _FINGERPRINT_FIELDS}
-    return json.dumps(projection, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    """Deterministic JSON serialisation of the **entire** advertised tool descriptor.
+
+    No field is excluded: whatever the server advertises is what the operator
+    approved, so whatever the server advertises is what gets hashed. Keys are
+    sorted, so the hash is stable across reorderings but sensitive to any
+    content change anywhere in the descriptor.
+    """
+    canonical = {"v": FINGERPRINT_VERSION, "tool": tool}
+    return json.dumps(canonical, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
 
 def fingerprint(tool: dict) -> str:
@@ -151,7 +164,12 @@ _SCHEMA_META_KEYS = frozenset({"$schema", "$id"})
 
 
 def _scannable_schema(value: object) -> object:
-    """Copy a JSON Schema without dialect metadata that is irrelevant to scanning."""
+    """Copy a structured descriptor value without JSON-Schema dialect metadata.
+
+    ``$schema``/``$id`` are boilerplate URLs, not evidence, so stripping them
+    keeps `EXF-URL` off legitimate manifests (issue #97). Applied to every
+    structured field now that the scan surface is the whole descriptor (#103).
+    """
     if isinstance(value, dict):
         return {
             key: _scannable_schema(item)
@@ -163,13 +181,47 @@ def _scannable_schema(value: object) -> object:
     return value
 
 
+#: Fields rendered first, and by name, so their evidence strings stay readable
+#: and the homoglyph check keeps its identifier/prose semantics.
+_PRIMARY_TEXT_FIELDS = ("name", "description")
+
+
 def _texts(tool: dict) -> list[tuple[str, str]]:
-    """(location, text) pairs to scan."""
-    out = [("name", str(tool.get("name", ""))), ("description", str(tool.get("description", "")))]
-    schema = tool.get("inputSchema")
-    if schema is not None:
-        out.append(("inputSchema", json.dumps(_scannable_schema(schema), ensure_ascii=False)))
+    """(location, text) pairs to scan — the **whole** descriptor, not a projection.
+
+    Scanning only ``name``/``description``/``inputSchema`` left an injection
+    hidden in ``annotations``, ``title``, ``outputSchema`` or ``_meta`` invisible
+    (issue #103), so every remaining top-level field is rendered and scanned too.
+    JSON-Schema dialect metadata (``$schema``/``$id``) is stripped from every
+    structured value before rendering, because those URLs are boilerplate rather
+    than evidence (issue #97).
+    """
+    out = [(field, str(tool.get(field, ""))) for field in _PRIMARY_TEXT_FIELDS]
+    for key in sorted(tool, key=str):  # sorted => deterministic finding order
+        if key in _PRIMARY_TEXT_FIELDS:
+            continue
+        value = tool[key]
+        if value is None:
+            continue
+        # Strings are scanned raw so regexes see real whitespace, not JSON escapes.
+        text = value if isinstance(value, str) else _render(_scannable_schema(value))
+        out.append((key, text))
     return out
+
+
+def _render(value: object) -> str:
+    """Deterministic text rendering of a structured descriptor value.
+
+    Descriptors arrive as JSON, so the fallback is defensive only — and it emits
+    a type placeholder rather than ``repr``/``str`` so no memory address can make
+    the scan output non-deterministic (Hard Rule #6 relies on reproducibility).
+    """
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        default=lambda obj: f"<{type(obj).__name__}>",
+    )
 
 
 def scan_tool(tool: dict) -> list[Finding]:

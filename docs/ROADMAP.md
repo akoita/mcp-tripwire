@@ -24,7 +24,7 @@ Measured on `main` — two different things, never conflated:
 
 - **Independent efficacy audit** (`make audit`) — 9 attacks reproduced from **published security research**, each carrying its citation: **4 blocked · 1 advisory · 3 missed · 1 out-of-scope**, and **2 of the 4 blocks come from drift, not scanning**. The misses are published rather than hidden. See the [real-world attack suite](features/real-world-attack-suite.md).
 - **Curated regression gate** (`make eval`) — **40/40 attacks blocked · 0 false-positive(s) on 12 clean tool(s)** on this project's own hand-written corpus. A pass/fail regression gate, **not** an efficacy claim.
-- **Tests** — **145 pass / 46 optional-extra skips** default, **209 pass / 0 skips with `[agent]` + `[signing]`** (both legs run in CI); deterministic core stdlib-only.
+- **Tests** — **165 pass / 46 optional-extra skips** default, **229 pass / 0 skips with `[agent]` + `[signing]`** (both legs run in CI); deterministic core stdlib-only.
 
 The **v0.2 — Credibility & integration** milestone (SARIF · Ed25519 · HTTP/SSE) is complete; design history is in the four accepted RFCs under [`docs/rfc/`](rfc/).
 
