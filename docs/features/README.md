@@ -13,6 +13,17 @@ This is the **precise reference** for what MCP-Tripwire actually does for the ag
 
 This catalog answers: ***given a tool descriptor or an MCP connection, what concrete value does Tripwire deliver, on which surface, with which guarantees?***
 
+## Read this first: the two tiers are not equally strong
+
+Two capabilities in this catalog make very different promises, and the tables below are ordered accordingly.
+
+| Tier | Capabilities | What it promises |
+|---|---|---|
+| **Tier 1 — deterministic guarantee** *(this is the product)* | [Drift quarantine](drift-quarantine.md) · [Signed trust badges](signed-trust-badges.md) | A tool your agent approved **cannot silently change underneath it**, and you hold cryptographic proof of exactly what was approved. Hash comparison + signature check, not a judgement call. **Zero false positives by construction.** Verifiable by anyone, offline, with only a public key. |
+| **Tier 2 — best-effort first pass** | [Tool descriptor scanning](descriptor-scanning.md) | Pattern rules that catch *known* poisoning shapes at approval time. Cheap and useful, with real false negatives. **Never a guarantee**, and no novelty claim — static MCP scanners already exist. |
+
+Stated precisely: Tripwire **proves** a tool has not changed since you approved it, and **flags** known-bad descriptor patterns as a first pass. The measured evidence for both — including the attacks Tripwire misses — is in [real-world-attack-suite.md](real-world-attack-suite.md); the full reasoning is in [docs/TRUST_MODEL.md](../TRUST_MODEL.md).
+
 ## Status legend
 
 | Symbol | Meaning |
@@ -33,14 +44,14 @@ This catalog answers: ***given a tool descriptor or an MCP connection, what conc
 
 ## Trust-loop features
 
-The core value Tripwire delivers to the agent: "can I trust this tool, and can I prove it?"
+The core value Tripwire delivers to the agent: "can I trust this tool, and can I prove it?" Ordered strongest-first — **Tier 1 rows carry a guarantee; the Tier 2 row does not.**
 
-| Feature | Status | Audience | Where to use / test | Notes |
-|---|---|---|---|---|
-| [Tool descriptor scanning](descriptor-scanning.md) | ✅ implemented | LLM agent · CI · operator | `tripwire scan <manifest.json>` · POST `/scan` · ADK Scanner agent · `src/tripwire/detection.py` · tests/unit/test_detection.py | Deterministic stdlib-only ruleset: instruction-override, invisible/zero-width, homoglyph, exfil & credential patterns, outbound URLs in metadata. Findings carry an OWASP MCP id. |
-| [Signed trust badges (attestation)](signed-trust-badges.md) | ✅ implemented | LLM agent · downstream auditor · CI | `tripwire verify <badge.json>` · `tripwire verify --pub <public.pem>` · POST `/verify` · `engine.approve()` · `src/tripwire/attestation.py` · ADK Attestor (with `require_confirmation=True`) | HMAC-SHA256 remains the zero-deps default; Ed25519 via `[signing]` makes badges independently verifiable with only the public key. |
-| [Drift quarantine (rug-pull defense)](drift-quarantine.md) | ✅ implemented | LLM agent · MCP gateway · CI | `engine.evaluate_call()` · stdio proxy `tools/call` short-circuit · `tripwire ci` corpus rug-pull case `d1` | An already-approved tool that mutates is caught both on the next `tools/call` AND on the next fresh `tools/list` (whichever the agent does first). |
-| [OWASP MCP Top-10 taxonomy](owasp-mcp-mapping.md) | ✅ implemented | Security team · downstream auditor · LLM agent | `src/tripwire/owasp.py` · every finding's `owasp` field · `tripwire scan` grouped output | Official MCP01:2025–MCP10:2025 IDs + human titles. Lets findings travel into existing AppSec workflows without re-derivation. Coverage matrix: [docs/OWASP_MCP_COVERAGE.md](../OWASP_MCP_COVERAGE.md). |
+| Feature | Tier | Status | Audience | Where to use / test | Notes |
+|---|---|---|---|---|---|
+| [Drift quarantine (rug-pull defense)](drift-quarantine.md) | **1 — guarantee** | ✅ implemented | LLM agent · MCP gateway · CI | `engine.evaluate_call()` · stdio proxy `tools/call` short-circuit · `tripwire ci` corpus rug-pull case `d1` | **The headline capability.** An already-approved tool that mutates is caught both on the next `tools/call` AND on the next fresh `tools/list` (whichever the agent does first). SHA-256 fingerprint comparison — no intent inference, zero false positives by construction. Proven against published research by case `rw-09`, where the scanner returns zero findings and drift quarantines anyway. |
+| [Signed trust badges (attestation)](signed-trust-badges.md) | **1 — guarantee** | ✅ implemented | LLM agent · downstream auditor · CI | `tripwire verify <badge.json>` · `tripwire verify --pub <public.pem>` · POST `/verify` · `engine.approve()` · `src/tripwire/attestation.py` · ADK Attestor (with `require_confirmation=True`) | Portable proof of exactly what was approved. HMAC-SHA256 remains the zero-deps default; Ed25519 via `[signing]` makes badges independently verifiable with only the public key — offline, without trusting Tripwire. |
+| [Tool descriptor scanning](descriptor-scanning.md) | **2 — best-effort** | ✅ implemented | LLM agent · CI · operator | `tripwire scan <manifest.json>` · POST `/scan` · ADK Scanner agent · `src/tripwire/detection.py` · tests/unit/test_detection.py | Coarse first pass, not a guarantee: a clean scan is not a safety claim. Deterministic stdlib-only ruleset: instruction-override, invisible/zero-width, homoglyph, exfil & credential patterns, outbound URLs in metadata. Findings carry an OWASP MCP id. Known false negatives are published, not hidden — see [real-world-attack-suite.md](real-world-attack-suite.md). |
+| [OWASP MCP Top-10 taxonomy](owasp-mcp-mapping.md) | taxonomy | ✅ implemented | Security team · downstream auditor · LLM agent | `src/tripwire/owasp.py` · every finding's `owasp` field · `tripwire scan` grouped output | Official MCP01:2025–MCP10:2025 IDs + human titles. Lets findings travel into existing AppSec workflows without re-derivation. Coverage matrix: [docs/OWASP_MCP_COVERAGE.md](../OWASP_MCP_COVERAGE.md). |
 
 ## Surface features
 
@@ -55,10 +66,12 @@ Where the trust loop is reachable from. Same engine, different transport.
 
 ## Quality & measurement features
 
-| Feature | Status | Audience | Where to use / test | Notes |
-|---|---|---|---|---|
-| [Attack corpus + drift runner](attack-corpus-runner.md) | ✅ implemented | Operator · CI · LLM agent | `corpus/attacks.jsonl` · `src/tripwire/corpus.py` · `make eval` · `tripwire ci --json` · `tests/unit/test_corpus.py` | Real measured headline: **40/40 attacks blocked · 0 false-positive(s) on 12 clean tool(s)**. Rule #6 (never invent metrics) is enforced here. |
-| [Real-world attack suite](real-world-attack-suite.md) | ✅ implemented | Judge / reviewer · operator · contributor | `corpus/real_world/attacks.jsonl` · `scripts/real_world_audit.py` · `make audit` · `tests/security/test_real_world_attacks.py` | Attacks reproduced from published research (Invariant Labs · MCPTox · Snyk), each with its citation. Reports catches **and** misses — measured **4 blocked · 1 advisory · 3 missed · 1 out_of_scope**. Efficacy measurement, not a pass/fail gate; distinct from `make eval`. |
+Two different jobs, and they must not be conflated: the **efficacy measurement** (what happens against attacks other people published, misses included) comes first; the **regression gate** (cases we wrote, which must stay at 100%) second.
+
+| Feature | Role | Status | Audience | Where to use / test | Notes |
+|---|---|---|---|---|---|
+| [Real-world attack suite](real-world-attack-suite.md) | **efficacy measurement** | ✅ implemented | Judge / reviewer · operator · contributor | `corpus/real_world/attacks.jsonl` · `scripts/real_world_audit.py` · `make audit` · `tests/security/test_real_world_attacks.py` | The project's non-circular evidence. Attacks reproduced from published research (Invariant Labs · MCPTox · Snyk), each with its citation. Reports catches **and** misses — measured **4 blocked · 1 advisory · 3 missed · 1 out_of_scope**, with **2 of the 4 blocks coming from drift, not scanning**. A report, not a pass/fail gate. |
+| [Attack corpus + drift runner](attack-corpus-runner.md) | **regression gate** | ✅ implemented | Operator · CI · LLM agent | `corpus/attacks.jsonl` · `src/tripwire/corpus.py` · `make eval` · `tripwire ci --json` · `tests/unit/test_corpus.py` | Real measured headline: **40/40 attacks blocked · 0 false-positive(s) on 12 clean tool(s)**. Cases curated by this project — this says the implementation has not regressed, *not* how much of the real threat landscape is covered. Rule #6 (never invent metrics) is enforced here. |
 
 ## v0.2 — Credibility & integration
 

@@ -2,17 +2,26 @@
 
 Knowledge context for humans and agents (the "Knowledge" row of the context map in [AGENTS.md](../AGENTS.md)).
 
+> **The claim hierarchy these docs assume.** Tripwire **proves** a tool has not
+> changed since you approved it (Tier 1: fingerprint drift + signed attestation —
+> a deterministic guarantee, zero false positives by construction), and **flags**
+> known-bad descriptor patterns as a first pass (Tier 2: best-effort, real false
+> negatives). Start with [TRUST_MODEL.md](TRUST_MODEL.md) §1 if you only read one
+> thing; see [features/real-world-attack-suite.md](features/real-world-attack-suite.md)
+> for the measured evidence, including the attacks Tripwire misses.
+
 - **[AGENTIC_SDLC.md](AGENTIC_SDLC.md)** — how we build: the Factory Model, the loop, the quality flywheel.
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** — components, the trust loop, data flow.
-- **[TRUST_MODEL.md](TRUST_MODEL.md)** — what you can verify vs must assume; threat model and non-goals.
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** — components, the trust loop, data flow; which layer carries a guarantee and which is best-effort.
+- **[TRUST_MODEL.md](TRUST_MODEL.md)** — the two tiers of strength; what you can verify vs must assume; the published-research evidence and its misses; threat model and non-goals.
+- **[features/real-world-attack-suite.md](features/real-world-attack-suite.md)** — the efficacy audit: 9 attacks reproduced from published security research with citations, run by `make audit`, reporting catches **and** misses.
 - **[OWASP_MCP_COVERAGE.md](OWASP_MCP_COVERAGE.md)** — coverage matrix against the official OWASP MCP Top 10 (2025) + old→new id remap.
 - **adr/** — Architecture Decision Records (one per structural decision).
   - [ADR-0001](adr/ADR-0001-mcp-trust-gateway.md) — MCP trust gateway, not a scanner
   - [ADR-0003](adr/ADR-0003-signed-attestations.md) — signed, tamper-evident attestations (the wedge)
   - [ADR-0004](adr/ADR-0004-secret-and-payload-hygiene.md) — secret & payload hygiene
-  - [ADR-0005](adr/ADR-0005-two-layer-verification.md) — two-layer verification (tests + evals)
+  - [ADR-0005](adr/ADR-0005-two-layer-verification.md) — two-layer verification (tests + evals), with the 2026-08 real-world evidence appended
 - **rfc/** — design proposals; all four (stdio proxy, Ed25519, SARIF, HTTP/SSE) are accepted and implemented.
-- **[features/](features/)** — **the precise reference** for what Tripwire delivers, per capability. One page per feature; index at [features/README.md](features/README.md). The catalog is the precise reference; the project root README is the pitch.
+- **[features/](features/)** — **the precise reference** for what Tripwire delivers, per capability, ordered strongest-first (integrity/attestation before scanning). One page per feature; index at [features/README.md](features/README.md). The catalog is the precise reference; the project root README is the pitch.
 - **plans/** — per-epic delivery plans (from `_TEMPLATE.md`).
 - **[archive/](archive/)** — historical artifacts (the original competition submission), kept for the record and out of the active surface.
 - **runbooks/** — operational guides, one per job:

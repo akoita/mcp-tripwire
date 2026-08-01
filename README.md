@@ -1,10 +1,18 @@
 # MCP-Tripwire
 
-**A lightweight OSS trust gateway for MCP tools.**
-It keeps checking a tool *after* you approve it, and hands you signed, portable proof of exactly what was trusted — continuous schema-integrity enforcement plus cryptographically signed attestations.
+**A tool your agent already approved can change underneath it.**
+MCP-Tripwire makes that impossible to do **silently** — and hands you portable, signed proof of exactly what was trusted.
 
-> Static scanners and runtime gateways already help teams reason about MCP risk.
-> MCP-Tripwire focuses on one narrow loop: *"can this agent keep trusting this tool **during execution**, and can I **prove** what was approved?"*
+> Continuous tool-contract integrity for MCP, with descriptor scanning as a best-effort first pass — and published evidence, including the cases it misses.
+
+**Two tiers, and they are not equally strong** — the project says so up front:
+
+| | What it is | Strength |
+|---|---|---|
+| **1. Contract integrity + signed attestation** *(this is the product)* | A tool's approved schema is fingerprinted; any later change quarantines the call. The badge verifies offline with a public key. | **Deterministic.** A hash comparison and a signature check — not a judgement call. **Zero false positives by construction.** |
+| **2. Descriptor scanning** *(first pass)* | Pattern rules for known poisoning shapes at approval time. | **Best-effort.** Real false negatives, no novelty claim — static MCP scanners already exist. |
+
+Static scanners and runtime gateways already help teams reason about MCP risk. Tripwire's narrow, defensible loop is the first row: *"can this agent keep trusting this tool **during execution**, and can I **prove** what was approved?"*
 
 <p align="center">
   <img src="docs/assets/demo-proxy.gif" width="720"

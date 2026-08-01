@@ -5,9 +5,18 @@
 > This file is paid on every interaction. Keep it lean; push detail into `docs/` and `.agents/skills/`.
 
 ## Mission
-A lightweight OSS **trust gateway for MCP tools**: continuous schema-integrity enforcement
-plus portable, cryptographically signed attestations. We answer the question others don't:
-*"Can this agent keep trusting this tool during execution — and can we prove it?"*
+A tool your agent already approved can change underneath it. MCP-Tripwire makes that
+impossible to do **silently** — and hands you portable, signed proof of exactly what was trusted.
+Two tiers, never equal peers:
+1. **Deterministic guarantee (this is the product).** Continuous tool-contract integrity +
+   signed attestation: a hash comparison and a signature check, not a judgement call. Zero
+   false positives by construction; verifiable offline by anyone with a public key.
+2. **Descriptor scanning (best-effort first pass).** Pattern rules for known poisoning shapes
+   at approval. Real false negatives; a cheap filter, **never** a guarantee, no novelty claim.
+
+Language: prefer *"proves a tool has not changed since you approved it, and flags known-bad
+descriptor patterns as a first pass"* over any unqualified "detects malicious tools". A scanner
+number is never the headline. We publish our misses — see [docs/features/real-world-attack-suite.md](docs/features/real-world-attack-suite.md).
 Product spec → [docs/SPEC.md](docs/SPEC.md). Plan → [docs/ROADMAP.md](docs/ROADMAP.md). Methodology → [docs/AGENTIC_SDLC.md](docs/AGENTIC_SDLC.md).
 
 ## Stack

@@ -1,7 +1,8 @@
 # MCP-Tripwire — Roadmap
 
-> **One-liner:** *"Can this agent keep trusting this tool during execution — and can I prove it?"*
-> **Now:** hardening the shipped surface (CI depth, test coverage, detection breadth) and moving toward a first real deployment.
+> **One-liner:** *A tool your agent already approved can change underneath it. MCP-Tripwire makes that impossible to do silently — and hands you portable, signed proof of exactly what was trusted.*
+> Continuous tool-contract integrity for MCP, with descriptor scanning as a best-effort first pass — and published evidence, including the cases it misses.
+> **Now:** hardening the shipped surface (CI depth, test coverage, detection breadth) and measuring the deterministic layer against attacks from published security research.
 > **Direction:** from a sharp, well-tested primitive to a production-grade trust gateway teams actually run in front of their MCP servers.
 
 ## Shipped
@@ -19,7 +20,11 @@ Everything below is on `main`, implemented and covered by tests. The precise, fi
 | HTTP gateway | `/scan` `/verify` `/eval` `/healthz`; local Docker verified | `app/fast_api_app.py`, [`docs/runbooks/deploy.md`](runbooks/deploy.md) |
 | Harness | hard rules machine-enforced; pre-commit no-commit-to-main; feature-catalog + root-clean guardrails | [AGENTS.md](../AGENTS.md), `scripts/harness_guardrails.py` |
 
-Measured on `main`: **118 default tests pass / 46 optional-extra skips**, **182 pass / 0 skips with `[agent]` + `[signing]`** (both legs run in CI), **40/40 attacks blocked · 0 false-positive(s) on 12 clean tool(s)** (`make eval`), deterministic core stdlib-only.
+Measured on `main` — two different things, never conflated:
+
+- **Independent efficacy audit** (`make audit`) — 9 attacks reproduced from **published security research**, each carrying its citation: **4 blocked · 1 advisory · 3 missed · 1 out-of-scope**, and **2 of the 4 blocks come from drift, not scanning**. The misses are published rather than hidden. See the [real-world attack suite](features/real-world-attack-suite.md).
+- **Curated regression gate** (`make eval`) — **40/40 attacks blocked · 0 false-positive(s) on 12 clean tool(s)** on this project's own hand-written corpus. A pass/fail regression gate, **not** an efficacy claim.
+- **Tests** — **145 pass / 46 optional-extra skips** default, **209 pass / 0 skips with `[agent]` + `[signing]`** (both legs run in CI); deterministic core stdlib-only.
 
 The **v0.2 — Credibility & integration** milestone (SARIF · Ed25519 · HTTP/SSE) is complete; design history is in the four accepted RFCs under [`docs/rfc/`](rfc/).
 
