@@ -58,7 +58,7 @@ ignore = ["S101"]  # asserts are fine in tests
 "examples/**" = ["S"]  # the demo intentionally models insecure behaviour (canary only)
 
 [tool.pytest.ini_options]
-testpaths = ["tests/unit", "tests/integration"]
+testpaths = ["tests/unit", "tests/integration", "tests/security"]
 addopts = "-q"                                     # coverage is NOT in addopts — kept off make check's fast path; opt in via `make coverage` / CI.
 pythonpath = ["src", "."]  # `.` so `from app.fast_api_app import app` works without PYTHONPATH override (Codex round 2 caveat).
 
