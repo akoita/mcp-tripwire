@@ -16,11 +16,14 @@ Open source (Apache-2.0), and built to be **verifiable rather than trusted**: a 
 
 | Headline | Number |
 |---|---|
-| Attack corpus blocked | **40 / 40** (`make eval`) |
-| False positives on clean tools | **0 / 12** |
+| Drift & badge integrity | **deterministic** — schema-hash + signature; **0 false positives by construction** |
+| Attack corpus blocked (curated) | **40 / 40** (`make eval`) † |
+| False positives (clean corpus) | **0 / 12** † |
 | Tests (unit + integration) | **118 passed / 46 skipped** with default `[dev]`; **182 passed / 0 skipped** with `[agent]` + `[signing]` extras — both legs run in [CI](.github/workflows/ci.yml) |
 | Deterministic core dependencies | **stdlib only** (verified by `scripts/harness_guardrails.py`) |
 | Demos (each its own `make` target) | `demo` · `demo-proxy` · `demo-adk` · `demo-proxy-sse` · `demo-real-mcp` |
+
+> † Corpus numbers measure the **descriptor-scanning pattern rules** against a curated attack/clean set — a coarse, best-effort layer. On real-world manifests it is less precise (e.g. a JSON-Schema `$schema` URL currently over-matches); precision hardening is tracked in [#97](https://github.com/akoita/mcp-tripwire/issues/97). The **drift + attestation** guarantees in the first row are deterministic and don't depend on scanning.
 
 ---
 
@@ -28,7 +31,7 @@ Open source (Apache-2.0), and built to be **verifiable rather than trusted**: a 
 
 An agent reaches its tools through MCP servers, and today it trusts each tool's self-described manifest implicitly — nothing re-checks that manifest once the agent starts working. Tripwire sits in front of those servers as a transparent gateway and does three things:
 
-1. **Vets** every tool's manifest before the agent can use it — catching poisoned or malicious tools at the door.
+1. **Vets** every tool's manifest before the agent can use it — a coarse, best-effort pass that catches known poisoning patterns at the door (the integrity checks below, not this, are the deterministic guarantee).
 2. **Pins** the exact approved schema as a fingerprint and re-checks it on every call and every re-list — catching tools that change *after* you trusted them.
 3. **Signs** a portable trust badge for each approved tool, so anyone can later verify what was trusted — offline, without calling back to Tripwire.
 
@@ -170,7 +173,7 @@ Full index: [`docs/README.md`](docs/README.md). The main entry points, by what y
 
 A trust gateway has to answer the obvious question — *why trust the thing that decides what to trust?* Tripwire's answer is that it is built **not** to require trust in itself: a badge verifies **offline** with just the public key; the verdict is a **deterministic function**, never an LLM opinion; the fingerprint is **reproducible** by anyone (`sha256(canonicalize(tool))`); and the headline numbers re-derive on your machine with `make eval`. Trust bottoms out at one well-understood anchor — **custody of the signing key** (HMAC for zero-deps demos, Ed25519 for real deployments).
 
-Known limits, stated plainly: drift detection proves *unchanged since approval*, not *safe* (trust-on-first-use); the guarded surface is the **manifest** — runtime-content injection is out of scope; and detection is heuristic, with **no novelty claim on scanning**.
+Known limits, stated plainly: drift detection proves *unchanged since approval*, not *safe* (trust-on-first-use); the guarded surface is the **manifest** — runtime-content injection is out of scope; and detection is heuristic, with **no novelty claim on scanning** — the pattern rules are coarse and over-fire on some real manifests (e.g. a JSON-Schema `$schema` URL), a precision gap being hardened ([#97](https://github.com/akoita/mcp-tripwire/issues/97)). The deterministic guarantees are **integrity and provenance**, not semantic safety.
 
 The full threat-model table, assumptions, where it helps most/least, and the roadmap: [`docs/TRUST_MODEL.md`](docs/TRUST_MODEL.md).
 
