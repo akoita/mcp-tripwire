@@ -71,6 +71,7 @@ The `scan_tool_descriptor()` ADK tool returns a richer dict (`{"status", "findin
 - **Stdlib-only** — Hard Rule #2 enforced by `harness_guardrails.py`. No third-party dep can creep into the scanner.
 - **No false negatives are guaranteed**, but every rule has a corpus case proving it fires when expected.
 - **Rule-based, not LLM-based** — won't catch novel attack phrasings that don't match a pattern. Adding LLM-judge as an *additive* layer is tracked in [`docs/TECH_DEBT.md`](../TECH_DEBT.md).
+- **Coarse precision on real manifests (false positives)** — the pattern rules also over-fire on benign real-world descriptors: e.g. a JSON-Schema `$schema` URL or the bare word "fetch" trips `EXF-URL`. This is why scanning is a best-effort layer, not a gate; precision hardening + real-manifest clean fixtures are tracked in [#97](https://github.com/akoita/mcp-tripwire/issues/97) (companion to the false-negative gap in [#91](https://github.com/akoita/mcp-tripwire/issues/91)).
 - **Per-descriptor, not per-server** — doesn't cross-correlate tools (e.g. detect that two tools with similar names are shadowing each other across MCP servers). Tracked in v0.3 as part of the multi-upstream registry.
 
 ## Cross-references
