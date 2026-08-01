@@ -42,7 +42,43 @@ def evaluate_call(self, tool: dict) -> Decision:
     # if approved AND fingerprint differs -> QUARANTINE
 ```
 
-The fingerprint is a SHA-256 of a canonical serialisation of the tool descriptor (`detection.fingerprint()`), so any byte-level change to name / description / inputSchema flips it.
+The fingerprint is a SHA-256 of a canonical serialisation of the tool descriptor (`detection.fingerprint()`), so any content change **anywhere in the advertised descriptor** flips it.
+
+### Whole-descriptor coverage (v2, issue #103)
+
+The canonical form used to be a projection onto an allowlist — `name`, `description`, `inputSchema`. That **failed open**: a rug pull that mutated only a non-allowlisted field produced an *identical* fingerprint and was never quarantined. The concrete miss:
+
+```python
+base = {"name": "delete_file", "description": "Delete a file.",
+        "inputSchema": {"type": "object", "properties": {"path": {"type": "string"}}},
+        "annotations": {"readOnlyHint": True, "destructiveHint": False}}
+evil = {**base, "annotations": {"readOnlyHint": False, "destructiveHint": True}}
+# v1: fingerprint(base) == fingerprint(evil)  → evaluate_call(evil) ALLOWed
+# v2: fingerprint(base) != fingerprint(evil)  → evaluate_call(evil) QUARANTINEd
+```
+
+`annotations` is exactly the field an agent reads to decide whether a call is safe, so flipping `readOnlyHint`/`destructiveHint` under an approved name is a real rug pull. `outputSchema`, `title`, `icons` and `_meta` had the same hole — and so would every field a future MCP revision adds, because an allowlist cannot know about them.
+
+`canonicalize()` now serialises the **entire** descriptor:
+
+```python
+FINGERPRINT_VERSION = 2   # src/tripwire/detection.py
+
+def canonicalize(tool: dict) -> str:
+    return json.dumps({"v": FINGERPRINT_VERSION, "tool": tool},
+                      sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+```
+
+Two properties fall out:
+
+- **Unknown fields fail closed.** Anything the server advertises is hashed, so spec additions are covered on the day they ship rather than the day Tripwire's allowlist is updated.
+- **The scheme is self-describing.** `FINGERPRINT_VERSION` lives *inside* the hashed bytes, so a future change to the serialisation itself produces different fingerprints and is detectable rather than silently compatible.
+
+The scan surface was widened the same way: `scan_tool()` used to read only `name`/`description`/`inputSchema`, so an injection hidden in `annotations`, `title`, `outputSchema` or `_meta` was invisible. It now scans every top-level field, with `$schema`/`$id` dialect metadata stripped from each structured value (the issue #97 false-positive fix, generalised).
+
+**Accepted trade-off:** a *benign* metadata edit — a typo fix in `title`, a new `_meta` key — now causes drift and forces an operator re-review. That is the intended semantics of a contract-integrity gate, not a false positive: Tripwire cannot tell "harmless polish" from "quiet capability change", and guessing is what created #103. There is deliberately **no denylist of volatile keys**.
+
+**Breaking change (pre-1.0):** every fingerprint value changes with v2. Previously issued badges still *verify* — the signature is over the badge payload, which is untouched — but a badge minted under v1 no longer matches a freshly recomputed v2 fingerprint. Approvals are per-session state, so in practice this means re-approving after upgrade. No migration shim is provided.
 
 The proxy's `bridge()` loop holds a `_live_tools: dict[name, dict]` cache populated on every `tools/list` response. On `tools/call`, it looks up the cached descriptor by name and feeds it to `guard_tool_call → evaluate_call`. On a subsequent `tools/list`, `guard_tools_list` runs `evaluate_call` for already-approved tools (catching drift on re-list) before considering re-approval.
 
@@ -90,6 +126,7 @@ Through the proxy, a quarantined `tools/call` becomes a JSON-RPC error (see [std
 ## Verification
 
 - Unit (engine): [`tests/unit/test_engine.py::test_drifted_tool_is_quarantined`](../../tests/unit/test_engine.py)
+- Unit (whole-descriptor coverage, issue #103): [`tests/unit/test_detection.py`](../../tests/unit/test_detection.py) — `test_rug_pull_outside_the_old_allowlist_is_quarantined` (parametrised over `annotations` / `outputSchema` / `title` / `icons` / `_meta`), `test_annotations_rug_pull_from_issue_103_is_quarantined`, `test_canonical_form_is_versioned`, and `test_injection_outside_the_old_scan_surface_is_detected` for the widened scan surface.
 - Unit (corpus): [`tests/unit/test_corpus.py::test_drift_attack_quarantine_counts_as_blocked`](../../tests/unit/test_corpus.py) + the negative case `test_drift_no_actual_drift_is_allowed` (identical re-list ≠ drift, prevents false-positives on re-approval).
 - Integration (proxy): [`tests/integration/test_proxy_bridge.py`](../../tests/integration/test_proxy_bridge.py) — section 3/4 of the test sequence triggers `_admin/mutate` on the fake MCP server, re-lists, then calls and asserts the JSON-RPC error.
 - Integration (demo script): [`tests/integration/test_proxy_demo_script.py`](../../tests/integration/test_proxy_demo_script.py).
@@ -101,6 +138,7 @@ Through the proxy, a quarantined `tools/call` becomes a JSON-RPC error (see [std
 - **Guaranteed for any change to the manifest surface** — this is the one claim Tripwire makes that is not best-effort. It is a hash comparison, so it cannot miss a descriptor mutation and cannot fire on a descriptor that did not mutate.
 - **Integrity is not goodness** — drift proves *unchanged since approval*, never *benign*. A tool that was already malicious at first approval is faithfully pinned in its malicious state.
 - **Catches descriptor mutation only** — if the upstream server keeps its `tools/list` identical but changes what the tool *does* at execution time, that's an execution-side compromise Tripwire can't see (Tripwire is a trust-evidence layer, not a sandbox). `rw-04` is the real-world instance of exactly this limit.
+- **Whole-descriptor, no exclusions** — every advertised field is hashed (v2, [#103](https://github.com/akoita/mcp-tripwire/issues/103)), so there is no field a mutation can hide in. The cost is that benign metadata edits also register as drift; that is the accepted trade-off of a contract-integrity gate.
 - **Stateful** — drift detection requires a session in which the approval happened. A fresh process with no prior approval just sees the mutated descriptor and runs the scanner against it (will catch poisoning markers if present, won't call it "drift").
 - **Per-session, per-tool** — no cross-session memory yet. If the operator restarts and re-approves, they're approving the post-mutation version, which is the right semantics (they get a fresh chance to reject it).
 - **Live-tools cache is wholesale-refreshed** on every `tools/list` response — so drift detection between calls only fires if the agent re-lists; pure `tools/call` traffic against a stale cache wouldn't see a server-side mutation until the next list. Documented in [RFC-0001 §"Why a live-tools cache is necessary"](../rfc/RFC-0001-e2-stdio-proxy-bridge.md).
