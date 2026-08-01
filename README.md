@@ -19,11 +19,11 @@ Open source (Apache-2.0), and built to be **verifiable rather than trusted**: a 
 | Drift & badge integrity | **deterministic** — schema-hash + signature; **0 false positives by construction** |
 | Attack corpus blocked (curated) | **40 / 40** (`make eval`) † |
 | False positives (clean corpus) | **0 / 12** † |
-| Tests (unit + integration) | **118 passed / 46 skipped** with default `[dev]`; **182 passed / 0 skipped** with `[agent]` + `[signing]` extras — both legs run in [CI](.github/workflows/ci.yml) |
+| Tests (unit + integration) | **124 passed / 46 skipped** with default `[dev]`; **188 passed / 0 skipped** with `[agent]` + `[signing]` extras — both legs run in [CI](.github/workflows/ci.yml) |
 | Deterministic core dependencies | **stdlib only** (verified by `scripts/harness_guardrails.py`) |
 | Demos (each its own `make` target) | `demo` · `demo-proxy` · `demo-adk` · `demo-proxy-sse` · `demo-real-mcp` |
 
-> † Corpus numbers measure the **descriptor-scanning pattern rules** against a curated attack/clean set — a coarse, best-effort layer. On real-world manifests it is less precise (e.g. a JSON-Schema `$schema` URL currently over-matches); precision hardening is tracked in [#97](https://github.com/akoita/mcp-tripwire/issues/97). The **drift + attestation** guarantees in the first row are deterministic and don't depend on scanning.
+> † Corpus numbers measure the **descriptor-scanning pattern rules** against a curated attack/clean set — a coarse, best-effort layer. Common benign cases such as JSON-Schema `$schema` / `$id` URLs and the ordinary English verb "fetch" are now handled; the committed [Morpho manifest fixture](corpus/samples/morpho-tools.json) scans clean. Novel benign patterns can still over-match. The **drift + attestation** guarantees in the first row are deterministic and don't depend on scanning.
 
 ---
 
@@ -173,7 +173,7 @@ Full index: [`docs/README.md`](docs/README.md). The main entry points, by what y
 
 A trust gateway has to answer the obvious question — *why trust the thing that decides what to trust?* Tripwire's answer is that it is built **not** to require trust in itself: a badge verifies **offline** with just the public key; the verdict is a **deterministic function**, never an LLM opinion; the fingerprint is **reproducible** by anyone (`sha256(canonicalize(tool))`); and the headline numbers re-derive on your machine with `make eval`. Trust bottoms out at one well-understood anchor — **custody of the signing key** (HMAC for zero-deps demos, Ed25519 for real deployments).
 
-Known limits, stated plainly: drift detection proves *unchanged since approval*, not *safe* (trust-on-first-use); the guarded surface is the **manifest** — runtime-content injection is out of scope; and detection is heuristic, with **no novelty claim on scanning** — the pattern rules are coarse and over-fire on some real manifests (e.g. a JSON-Schema `$schema` URL), a precision gap being hardened ([#97](https://github.com/akoita/mcp-tripwire/issues/97)). The deterministic guarantees are **integrity and provenance**, not semantic safety.
+Known limits, stated plainly: drift detection proves *unchanged since approval*, not *safe* (trust-on-first-use); the guarded surface is the **manifest** — runtime-content injection is out of scope; and detection is heuristic, with **no novelty claim on scanning**. The pattern rules remain coarse and may over-fire on novel benign descriptors, although common JSON-Schema metadata URLs and ordinary "fetch" descriptions are now handled and the [Morpho manifest fixture](corpus/samples/morpho-tools.json) scans clean. The deterministic guarantees are **integrity and provenance**, not semantic safety.
 
 The full threat-model table, assumptions, where it helps most/least, and the roadmap: [`docs/TRUST_MODEL.md`](docs/TRUST_MODEL.md).
 

@@ -101,7 +101,8 @@ _RULES: list[tuple[str, re.Pattern, str, Severity, str]] = [
     (
         "EXF-SECRET",
         re.compile(
-            r"(exfiltrat|leak|send|upload|post)\b.{0,40}\b" r"(secret|token|key|credential|canary)",
+            r"(exfiltrat\w*|leak|send|upload|post)\b.{0,40}\b"
+            r"(secret|token|key|credential|canary)",
             re.I,
         ),
         "Describes exfiltrating secrets/credentials",
@@ -117,7 +118,7 @@ _RULES: list[tuple[str, re.Pattern, str, Severity, str]] = [
     ),
     (
         "EXF-URL",
-        re.compile(r"(curl|wget|fetch|http[s]?://)\S*", re.I),
+        re.compile(r"(curl|wget|http[s]?://)\S*", re.I),
         "Embeds an outbound network call in tool metadata",
         Severity.MEDIUM,
         "MCP06:2025",
@@ -146,13 +147,28 @@ SHADOW_HOMOGLYPH = "SHADOW-HOMOGLYPH"
 # ship without a dedicated test. New structural checks MUST add their id here.
 RULE_IDS: tuple[str, ...] = tuple(r[0] for r in _RULES) + (INJ_INVISIBLE, SHADOW_HOMOGLYPH)
 
+_SCHEMA_META_KEYS = frozenset({"$schema", "$id"})
+
+
+def _scannable_schema(value: object) -> object:
+    """Copy a JSON Schema without dialect metadata that is irrelevant to scanning."""
+    if isinstance(value, dict):
+        return {
+            key: _scannable_schema(item)
+            for key, item in value.items()
+            if key not in _SCHEMA_META_KEYS
+        }
+    if isinstance(value, list):
+        return [_scannable_schema(item) for item in value]
+    return value
+
 
 def _texts(tool: dict) -> list[tuple[str, str]]:
     """(location, text) pairs to scan."""
     out = [("name", str(tool.get("name", ""))), ("description", str(tool.get("description", "")))]
     schema = tool.get("inputSchema")
     if schema is not None:
-        out.append(("inputSchema", json.dumps(schema, ensure_ascii=False)))
+        out.append(("inputSchema", json.dumps(_scannable_schema(schema), ensure_ascii=False)))
     return out
 
 

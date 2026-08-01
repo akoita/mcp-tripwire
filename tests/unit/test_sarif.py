@@ -125,8 +125,8 @@ def test_ci_inputs_carry_tripwire_case_props_on_results():
     assert props["tripwire_case"]["decision_action"] == "block"
 
 
-def test_from_corpus_rows_includes_drift_case_with_synthetic_finding():
-    """End-to-end: scanner-clean drift cases get synthetic SARIF findings."""
+def test_from_corpus_rows_reports_real_and_synthetic_drift_findings():
+    """End-to-end: detected drift payloads stay real; clean ones get a fallback."""
     rows = run_corpus(load_corpus()).rows
     inputs = from_corpus_rows(rows)
     doc = to_sarif(inputs)
@@ -134,7 +134,14 @@ def test_from_corpus_rows_includes_drift_case_with_synthetic_finding():
     assert "DRIFT-RUGPULL" in rule_ids, f"synthetic drift rule missing. Rule IDs: {rule_ids}"
     drift_results = [r for r in doc["runs"][0]["results"] if r["ruleId"] == "DRIFT-RUGPULL"]
     drift_case_ids = {r["properties"]["tripwire_case"]["id"] for r in drift_results}
-    assert drift_case_ids == {"d1", "d3", "d5"}
+    assert drift_case_ids == {"d3", "d5"}
+
+    d1_results = [
+        result
+        for result in doc["runs"][0]["results"]
+        if result["properties"]["tripwire_case"]["id"] == "d1"
+    ]
+    assert {result["ruleId"] for result in d1_results} == {"EXF-SECRET"}
 
 
 # --- schema validation (skipif on jsonschema absence) ----------------------
