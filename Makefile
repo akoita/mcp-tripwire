@@ -4,7 +4,7 @@
 PYTHON ?= python3
 VENV ?= .venv
 RUN_PYTHON = $(if $(wildcard $(VENV)/bin/python),$(VENV)/bin/python,$(PYTHON))
-.PHONY: help install ensure-dev check lint test test-agent guardrails eval demo demo-proxy demo-proxy-sse demo-real-mcp demo-adk ci ci-local clean
+.PHONY: help install ensure-dev check lint test test-agent guardrails eval audit demo demo-proxy demo-proxy-sse demo-real-mcp demo-adk ci ci-local clean
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -62,6 +62,9 @@ guardrails:  ## Deterministic enforcement of AGENTS.md hard rules
 
 eval:  ## Run the attack corpus and report N/M blocked (non-deterministic layer entrypoint)
 	@if command -v uv >/dev/null 2>&1; then uv run python -m tripwire.cli ci; else PYTHONPATH=src $(RUN_PYTHON) -m tripwire.cli ci || PYTHONPATH=src $(PYTHON) -m tripwire.cli ci; fi
+
+audit:  ## Audit the real-world attack suite (published-research cases; reports catches AND misses)
+	@if command -v uv >/dev/null 2>&1; then uv run python scripts/real_world_audit.py; else $(RUN_PYTHON) scripts/real_world_audit.py || $(PYTHON) scripts/real_world_audit.py; fi
 
 demo:  ## Run the A/B proof-moment demo (canary secret, local fake sink)
 	@if command -v uv >/dev/null 2>&1; then uv run python examples/demo.py; else PYTHONPATH=src $(RUN_PYTHON) examples/demo.py || PYTHONPATH=src $(PYTHON) examples/demo.py; fi

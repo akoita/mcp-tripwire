@@ -58,6 +58,7 @@ Where the trust loop is reachable from. Same engine, different transport.
 | Feature | Status | Audience | Where to use / test | Notes |
 |---|---|---|---|---|
 | [Attack corpus + drift runner](attack-corpus-runner.md) | ✅ implemented | Operator · CI · LLM agent | `corpus/attacks.jsonl` · `src/tripwire/corpus.py` · `make eval` · `tripwire ci --json` · `tests/unit/test_corpus.py` | Real measured headline: **40/40 attacks blocked · 0 false-positive(s) on 12 clean tool(s)**. Rule #6 (never invent metrics) is enforced here. |
+| [Real-world attack suite](real-world-attack-suite.md) | ✅ implemented | Judge / reviewer · operator · contributor | `corpus/real_world/attacks.jsonl` · `scripts/real_world_audit.py` · `make audit` · `tests/security/test_real_world_attacks.py` | Attacks reproduced from published research (Invariant Labs · MCPTox · Snyk), each with its citation. Reports catches **and** misses — measured **4 blocked · 1 advisory · 3 missed · 1 out_of_scope**. Efficacy measurement, not a pass/fail gate; distinct from `make eval`. |
 
 ## v0.2 — Credibility & integration
 

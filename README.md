@@ -17,9 +17,10 @@ Open source (Apache-2.0), and built to be **verifiable rather than trusted**: a 
 | Headline | Number |
 |---|---|
 | Drift & badge integrity | **deterministic** — schema-hash + signature; **0 false positives by construction** |
+| Published-research attacks ([suite](docs/features/real-world-attack-suite.md)) | **4 blocked · 1 advisory · 3 missed · 1 out-of-scope** of 9 cited cases (`make audit`) — **2 of the 4 caught by drift, not scanning** |
 | Attack corpus blocked (curated) | **40 / 40** (`make eval`) † |
 | False positives (clean corpus) | **0 / 12** † |
-| Tests (unit + integration) | **124 passed / 46 skipped** with default `[dev]`; **188 passed / 0 skipped** with `[agent]` + `[signing]` extras — both legs run in [CI](.github/workflows/ci.yml) |
+| Tests (unit + integration) | **145 passed / 46 skipped** with default `[dev]`; **209 passed / 0 skipped** with `[agent]` + `[signing]` extras — both legs run in [CI](.github/workflows/ci.yml) |
 | Deterministic core dependencies | **stdlib only** (verified by `scripts/harness_guardrails.py`) |
 | Demos (each its own `make` target) | `demo` · `demo-proxy` · `demo-adk` · `demo-proxy-sse` · `demo-real-mcp` |
 
@@ -46,6 +47,21 @@ Tripwire doesn't try to read a tool's intent. It enforces **integrity**, which c
 | **Honest, then it changes** | an approved tool's schema silently mutates — a benign update *or* a malicious **rug pull** (`MCP03:2025` tool poisoning) | The fingerprint stops matching, so the next call is **quarantined** and you re-review. Intent is irrelevant — *the change itself* is the trigger. |
 
 The third row is the gap Tripwire exists for: a static scanner signs off once and never looks again, while a runtime gateway rarely leaves evidence you can audit later. Tripwire keeps the approval honest for the whole session **and** leaves a signed, tamper-evident trail.
+
+### Does that hold against attacks we didn't invent?
+
+A corpus you wrote yourself, graded by rules you wrote yourself, proves very little. So there is a second suite — [`corpus/real_world/attacks.jsonl`](corpus/real_world/attacks.jsonl) — reproducing descriptors from **published** MCP security research ([Invariant Labs' tool-poisoning and WhatsApp rug-pull notifications](https://invariantlabs.ai/blog/mcp-security-notification-tool-poisoning-attacks), the [MCPTox benchmark](https://arxiv.org/abs/2508.14925), [Snyk's postmark-mcp writeup](https://snyk.io/blog/malicious-mcp-server-on-npm-postmark-mcp-harvests-emails/)), each carrying its citation. `make audit` runs them and prints what actually happens — **including the misses**:
+
+**4 blocked · 1 advisory · 3 missed · 1 out-of-scope**, of 9 cases.
+
+That is not a flattering number, and it is the point. Read it in two halves:
+
+- **The scanner alone is a coarse first pass.** Three cases are honest false negatives — instructions that redirect data to a third party or exfiltrate "configuration and key files", phrased around every keyword the rules know. They are recorded, not hidden, and deliberately *not* fixed by tuning rules against those exact strings.
+- **The integrity layer is the part that holds up.** **Two of the four blocks come from drift, not detection** — and the headline case (`rw-09`) is verified to be one the scanner *cannot* see: the test asserts `scan_tool()` returns **zero findings** on the mutated descriptor, and that Tripwire quarantines the call anyway. An attack invisible to every content rule in this repo, stopped by comparing a fingerprint.
+
+The remaining case (`rw-04`, the real postmark-mcp compromise) is marked **out-of-scope** rather than missed: that attack changed the server's *implementation* while its published manifest stayed byte-identical, so no manifest-integrity gate could catch it. The boundary is documented and tested, not papered over.
+
+Details, per-case citations, and the four outcome classes: [**real-world attack suite**](docs/features/real-world-attack-suite.md).
 
 ## How it works — the trust loop
 
