@@ -4,9 +4,13 @@
 
 ## Value (what this gives the agent / LLM)
 
-Before an agent calls a tool advertised by an MCP server, Tripwire tells it whether the tool's **descriptor itself is hostile** — independent of what the tool actually does at runtime. A poisoned description (instruction-override, hidden-from-user, exfil instructions, invisible Unicode payloads, homoglyph shadowing) is detected and tagged with an OWASP MCP Top-10 category, so the agent (or the operator / CI gating the agent) can refuse to call it.
+> **Tier 2 — best-effort first pass, not a guarantee.** This page describes the *coarse* layer. It has real false negatives and carries no novelty claim: static MCP scanners already exist. The project's deterministic guarantee is [drift-quarantine](drift-quarantine.md) + [signed badges](signed-trust-badges.md) — see [the two tiers](README.md) and the measured limits in [the real-world attack suite](real-world-attack-suite.md).
 
-Without this, the agent treats `tools/list` as ground truth — which is exactly how tool-poisoning attacks succeed in the wild.
+Before an agent calls a tool advertised by an MCP server, Tripwire runs a cheap pattern pass over the descriptor and flags **known poisoning shapes** — instruction-override, hidden-from-user, exfil instructions, invisible Unicode payloads, homoglyph shadowing — tagging each with an OWASP MCP Top-10 category so the agent (or the operator / CI gating it) can refuse to call the tool.
+
+The honest framing: this catches descriptors that *look like* attacks already seen. It does **not** decide whether a descriptor is hostile in general — that needs intent, which no pattern rule reads. Measured against published research it blocks 2 of 9 cases outright, flags 1 as advisory, and misses 3 ([suite](real-world-attack-suite.md)). Treat it as a filter that raises the attacker's cost; rely on the integrity layer for the guarantee.
+
+Without any such pass, the agent treats `tools/list` as ground truth — which is exactly how tool-poisoning attacks succeed in the wild.
 
 ## Audience
 

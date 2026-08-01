@@ -1,17 +1,31 @@
 # MCP-Tripwire — Product Spec (PRD)
 
 **Status:** Living document · **Owner:** Aboubakar Koïta
-**One-liner:** *A lightweight OSS trust gateway for MCP tools — continuous schema-integrity enforcement plus portable, cryptographically signed attestations.*
+**One-liner:** *A tool your agent already approved can change underneath it. MCP-Tripwire makes that impossible to do silently — and hands you portable, signed proof of exactly what was trusted. Descriptor scanning rides along as a best-effort first pass.*
 
 ## Problem Statement
-Agents increasingly call external tools via MCP servers, but a tool's manifest is trusted implicitly: a malicious description can hijack the agent (tool poisoning), and an already-approved tool can silently mutate after approval (rug pull). The space already includes static scanners (Invariant mcp-scan, Snyk agent-scan), runtime gateways (Prompt Security MCP Gateway), and a shared taxonomy (OWASP MCP Top 10) — so we do **not** claim others "only scan once." Tripwire's niche is narrower and sharper: **a lightweight, open trust gateway focused on continuous schema-integrity enforcement plus portable, cryptographically verifiable attestations** that travel with the tool and break on tamper — the verifiable-evidence angle others don't center.
+Agents increasingly call external tools via MCP servers, and a tool's manifest is trusted implicitly — once, at approval time, and then never again. That leaves the load-bearing gap: **an already-approved tool can silently mutate after approval** (rug pull), and nothing in the protocol tells the agent. A second, softer problem sits alongside it: a malicious description can hijack the agent at approval time (tool poisoning).
+
+These two problems are **not** equally tractable, and Tripwire does not pretend they are:
+
+- **Contract integrity is decidable.** "Is this tool byte-for-byte what you approved, and can you prove what you approved?" is a hash comparison plus a signature check. It is deterministic, has zero false positives by construction, is verifiable offline by anyone holding a public key, and is structurally out of reach for a one-shot static scan.
+- **Intent is not decidable.** "Is this description malicious?" is a judgement call. Pattern rules catch known shapes and miss unknown ones; we treat them as a cheap first filter, never as a guarantee.
+
+The space already includes static scanners (Invariant mcp-scan, Snyk agent-scan), runtime gateways (Prompt Security MCP Gateway), and a shared taxonomy (OWASP MCP Top 10) — so we do **not** claim others "only scan once," and we claim no novelty for descriptor scanning at all. Tripwire's niche is narrower and sharper: **a lightweight, open trust gateway focused on continuous tool-contract integrity plus portable, cryptographically verifiable attestations** that travel with the tool and break on tamper — the verifiable-evidence angle others don't center.
 
 ## Goals
-1. **Catch the two headline MCP threats at runtime** — tool-poisoning at approval and rug-pull (schema drift) mid-session — with a visible block/quarantine.
-2. **Produce verifiable trust evidence** — a signed attestation per approved tool whose signature breaks on any tamper, verifiable offline with only the public key (Ed25519) and no callback to Tripwire.
-3. **Prove it works, measurably** — an A/B where an agent exfiltrates a labeled **canary** secret without Tripwire and is blocked with it; `tripwire ci` reports **N/M attacks blocked** on the bundled corpus (real measured numbers, never invented ones).
-4. **Be verifiable rather than trusted** — deterministic verdicts (never an LLM opinion), reproducible fingerprints, and headline numbers that re-derive on the user's machine.
-5. **Reach production usefulness** — installable, deployable, and runnable in front of a real team's MCP servers with a clear operator path.
+1. **Guarantee tool-contract integrity at runtime — the primary claim.** Fingerprint each approved tool's full schema and re-verify on every call and every re-list; any post-approval mutation is quarantined with a visible diff. A hash comparison, not an opinion: deterministic, **zero false positives by construction**, and independent of whether any rule can read the payload.
+2. **Produce verifiable trust evidence** — a signed attestation per approved tool whose signature breaks on any tamper, verifiable offline with only the public key (Ed25519) and no callback to Tripwire. Together with (1) this is the product: *a tool your agent approved cannot silently change, and you hold cryptographic proof of exactly what was approved.*
+3. **Flag known-bad descriptor patterns as a bounded best-effort first pass** — scan manifests/descriptions at approval and refuse high-severity findings. Explicitly *best-effort*: it guesses at intent, it has real false negatives (three are published, below), it is never presented as a guarantee, and it is never the headline number. No novelty claim — static MCP scanners already exist and are cited above as related work.
+4. **Prove it works, measurably — including where it fails.** Three distinct kinds of evidence, never conflated:
+   - *Independent efficacy audit* — [`corpus/real_world/attacks.jsonl`](../corpus/real_world/attacks.jsonl) reproduces 9 attacks from **published security research**, each carrying its citation; `make audit` runs them through the real engine and reports **4 blocked · 1 advisory · 3 missed · 1 out-of-scope**, with **2 of the 4 blocks coming from drift, not scanning**. The headline, non-circular case is `rw-09`: `scan_tool()` returns **zero findings** on the mutated descriptor — the scanner is *provably blind* — and `evaluate_call()` returns **QUARANTINE** anyway. An attack no content rule in this repo can see, stopped by comparing a fingerprint. Details: [docs/features/real-world-attack-suite.md](features/real-world-attack-suite.md).
+   - *Regression gate* — `tripwire ci` reports **N/M attacks blocked** on the hand-curated bundled corpus and fails the build on any survivor. This is a **regression gate, not an efficacy claim**, and must never be quoted as one.
+   - *Proof moment* — an A/B where an agent exfiltrates a labeled **canary** secret without Tripwire and is blocked with it.
+
+   All numbers are measured, never invented (Hard Rule #6).
+5. **Publish the misses.** A security tool that reports only its wins cannot be audited. The real-world suite records its false negatives (`rw-02` shadowing, `rw-08` silent forwarding, `rw-07` keyword-avoiding exfiltration — tracked in [#101](https://github.com/akoita/mcp-tripwire/issues/101) and deliberately *not* fixed by pattern-matching those exact strings) and one explicit out-of-scope case (`rw-04`, the real postmark-mcp compromise: the server *implementation* changed while its published manifest stayed byte-identical, so no manifest-integrity gate could catch it). Tests enforce that those records stay truthful.
+6. **Be verifiable rather than trusted** — deterministic verdicts (never an LLM opinion), reproducible fingerprints, and headline numbers that re-derive on the user's machine.
+7. **Reach production usefulness** — installable, deployable, and runnable in front of a real team's MCP servers with a clear operator path.
 
 ## Non-Goals (and why)
 - **Out-feature the incumbents (Invariant/mcp-scan, etc.)** — breadth is not the wedge; verifiable trust evidence is. We make no novelty claim on scanning.
@@ -55,7 +69,7 @@ Agents increasingly call external tools via MCP servers, but a tool's manifest i
 - Ledger-anchored attestations; multi-framework support beyond MCP; hosted control plane — all gated on real external pull.
 
 ## Success Metrics
-- *Leading:* attack-survival rate driven to 0/N on the corpus; setup-to-first-badge < 5 min; zero false-block on a clean reference server; CI runs the full extras-gated suite.
+- *Leading:* **no regression** on the curated gate (0 survivors on `corpus/attacks.jsonl` — a regression gate, not an efficacy target); **movement on the real-world audit**, where the honest number today is 4 blocked / 1 advisory / 3 missed / 1 out-of-scope, improved only by rules that *generalise* — never by pattern-matching the recorded cases; setup-to-first-badge < 5 min; zero false-block on a clean reference server (the Morpho fixture stays at 0 findings); CI runs the full extras-gated suite.
 - *Lagging:* adoption (installs / stars); Tripwire integrated into a real agent's CI; a real team running it in front of production MCP servers.
 
 ## Open Questions
